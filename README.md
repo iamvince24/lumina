@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lumina 前端專案
 
-## Getting Started
+Lumina 是一個基於 Next.js 14+ 的心智圖應用程式，使用 TypeScript、shadcn/ui、Zustand、React Flow 等技術建構。
 
-First, run the development server:
+## 📋 專案技術棧
+
+- **框架**: Next.js 14+ (App Router)
+- **語言**: TypeScript
+- **套件管理**: pnpm
+- **UI 框架**: shadcn/ui
+- **狀態管理**: Zustand
+- **心智圖引擎**: React Flow
+- **資料視覺化**: D3.js
+- **動畫**: Framer Motion
+- **虛擬滾動**: @tanstack/react-virtual
+- **測試框架**: Vitest + React Testing Library
+
+## 🚀 開始使用
+
+### 安裝依賴
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 開發模式
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+開啟 [http://localhost:3000](http://localhost:3000) 查看結果。
 
-## Learn More
+### 執行測試
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# 執行所有測試
+pnpm test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 執行測試並顯示 UI
+pnpm test:ui
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 檢查測試覆蓋率
+pnpm test:coverage
 
-## Deploy on Vercel
+# 監聽模式
+pnpm test:watch
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 建置專案
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm build
+```
+
+### 執行 Lint
+
+```bash
+pnpm lint
+```
+
+## 📁 專案結構
+
+```
+src/
+├── app/                          # Next.js App Router
+├── components/                   # React 組件
+│   ├── ui/                       # shadcn/ui 組件
+│   ├── MindMapEditor/            # 心智圖編輯器
+│   ├── TopicSystem/              # Topic 相關組件
+│   └── CalendarView/             # 月曆視圖組件
+├── stores/                       # Zustand stores
+├── types/                        # TypeScript 型別定義
+├── utils/                        # 工具函式
+├── hooks/                        # Custom Hooks
+└── __tests__/                    # 測試檔案
+```
+
+## 📝 開發規範
+
+- 所有程式碼必須有繁體中文註解
+- 使用 TypeScript 嚴格模式
+- 遵循 ESLint 和 Prettier 規範
+- 每個功能模組必須有單元測試（覆蓋率 > 80%）
