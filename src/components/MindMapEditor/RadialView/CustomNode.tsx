@@ -6,6 +6,7 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import type { NodeData } from '@/types/mindmap';
 
 /**
@@ -34,6 +35,26 @@ export const CustomNode = memo(({ data, selected }: NodeProps<NodeData>) => {
 
       {/* Node 內容 */}
       <div className="text-sm text-gray-800 wrap-break-word">{data.label}</div>
+
+      {/* Tags */}
+      {data.tags && data.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {data.tags.map((tag) => (
+            <Badge
+              key={tag.id}
+              variant="secondary"
+              className="text-xs px-1.5 py-0.5"
+              style={{
+                backgroundColor: `${tag.color}20`,
+                color: tag.color,
+                borderColor: tag.color,
+              }}
+            >
+              {tag.name}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {/* 連接點：下方 */}
       <Handle

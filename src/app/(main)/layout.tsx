@@ -3,8 +3,11 @@
  * 包含側邊欄和 Header
  */
 import { Suspense } from 'react';
+import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 import { TabSystem } from '@/components/TabSystem';
 import { Header } from '@/components/Header';
+import { CommandPalette } from '@/components/CommandPalette';
 
 export default function MainLayout({
   children,
@@ -14,10 +17,19 @@ export default function MainLayout({
   return (
     <div className="flex h-screen bg-gray-50">
       {/* TODO: 側邊欄組件 */}
-      <aside className="w-64 bg-white border-r border-gray-200">
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4">
           <h2 className="text-lg font-semibold">Lumina</h2>
         </div>
+        <nav className="flex-1 px-4">
+          <Link
+            href="/recently-deleted"
+            className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors rounded-lg"
+          >
+            <Trash2 className="w-5 h-5" />
+            <span>最近刪除</span>
+          </Link>
+        </nav>
       </aside>
 
       {/* 主內容區域 */}
@@ -43,6 +55,9 @@ export default function MainLayout({
           </Suspense>
         </main>
       </div>
+
+      {/* 命令面板（全域） */}
+      <CommandPalette />
     </div>
   );
 }

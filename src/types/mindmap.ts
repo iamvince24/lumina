@@ -31,6 +31,13 @@ export interface NodeData {
   /** Node 的顏色（十六進位色碼） */
   color?: string;
 
+  /** Tags 標籤 */
+  tags?: Array<{
+    id: string;
+    name: string;
+    color: string;
+  }>;
+
   /** 建立時間 */
   createdAt?: Date;
 

@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { MOCK_TOPICS, MOCK_MINDMAPS, MOCK_TOPIC_NODES } from './data';
 import type { MockTopic, MockMindMap, MockTopicNodes } from './types';
 import type { Node, Edge } from '@/types/mindmap';
+import type { Tag } from '@/types/tag';
 
 /**
  * 模擬 API 延遲
@@ -22,6 +23,7 @@ interface UseQueryResult<T> {
   data: T | undefined;
   isLoading: boolean;
   error: Error | null;
+  refetch?: () => void;
 }
 
 /**
@@ -383,5 +385,285 @@ export function useMockSignOut(options?: {
     mutate,
     isPending,
     isLoading: isPending,
+  };
+}
+
+/**
+ * Mock: 建立 Tag
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockCreateTag(options?: {
+  onSuccess?: (tag: Tag) => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const mutate = async (params: {
+    name: string;
+    color: string;
+  }): Promise<Tag> => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+
+      const newTag: Tag = {
+        id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: params.name,
+        color: params.color,
+        createdAt: new Date(),
+        usageCount: 0,
+      };
+
+      options?.onSuccess?.(newTag);
+      return newTag;
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    mutate,
+    isLoading,
+  };
+}
+
+/**
+ * Mock: 取得所有 Tags
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockGetAllTags(): UseQueryResult<Tag[]> {
+  const [data, setData] = useState<Tag[] | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await mockDelay(300);
+        // 模擬從 localStorage 或 API 取得 Tags
+        // 實際應從後端 API 取得
+        const mockTags: Tag[] = [];
+        setData(mockTags);
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+/**
+ * Mock: 更新 Node 的 Tags
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockUpdateNodeTags(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const mutate = async (params: { nodeId: string; tagIds: string[] }) => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 模擬更新 Node Tags
+      console.log('Mock: Update node tags', params);
+      options?.onSuccess?.();
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    mutate,
+    isLoading,
+  };
+}
+
+/**
+ * Mock: 取得已刪除的 Topics
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockGetDeletedTopics(): UseQueryResult<
+  Array<{ id: string; name: string; deletedAt: Date }>
+> {
+  const [data, setData] = useState<
+    Array<{ id: string; name: string; deletedAt: Date }> | undefined
+  >();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 模擬已刪除的 Topics
+      const mockDeletedTopics: Array<{
+        id: string;
+        name: string;
+        deletedAt: Date;
+      }> = [];
+      setData(mockDeletedTopics);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, refetch: fetchData };
+}
+
+/**
+ * Mock: 取得已刪除的 Nodes
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockGetDeletedNodes(): UseQueryResult<
+  Array<{ id: string; label: string; deletedAt: Date }>
+> {
+  const [data, setData] = useState<
+    Array<{ id: string; label: string; deletedAt: Date }> | undefined
+  >();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 模擬已刪除的 Nodes
+      const mockDeletedNodes: Array<{
+        id: string;
+        label: string;
+        deletedAt: Date;
+      }> = [];
+      setData(mockDeletedNodes);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, refetch: fetchData };
+}
+
+/**
+ * Mock: 取得已刪除的 MindMaps
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockGetDeletedMindMaps(): UseQueryResult<
+  Array<{ id: string; title: string; deletedAt: Date }>
+> {
+  const [data, setData] = useState<
+    Array<{ id: string; title: string; deletedAt: Date }> | undefined
+  >();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 模擬已刪除的 MindMaps
+      const mockDeletedMindMaps: Array<{
+        id: string;
+        title: string;
+        deletedAt: Date;
+      }> = [];
+      setData(mockDeletedMindMaps);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, refetch: fetchData };
+}
+
+/**
+ * Mock: 復原 Topic
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockRestoreTopic(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const mutate = async (params: { topicId: string }) => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 模擬復原 Topic
+      console.log('Mock: Restore topic', params);
+      options?.onSuccess?.();
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    mutate,
+    isLoading,
+  };
+}
+
+/**
+ * Mock: 永久刪除 Topic
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockPermanentDeleteTopic(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const mutate = async (params: { topicId: string }) => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 模擬永久刪除 Topic
+      console.log('Mock: Permanent delete topic', params);
+      options?.onSuccess?.();
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    mutate,
+    isLoading,
   };
 }

@@ -5,15 +5,24 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
+import { Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { useViewModeStore } from '@/stores/viewModeStore';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useMindMapStore } from '@/stores/mindmapStore';
+import { useTagStore } from '@/stores/tagStore';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
+import { TagDialog } from '@/components/TagSystem/TagDialog';
+import { ExportDialog } from '@/components/ExportSystem/ExportDialog';
 import { ViewSwitcher } from './ViewSwitcher';
 import { RadialView } from './RadialView';
 import { OutlinerView } from './OutlinerView';
 import { LogicChartView } from './LogicChartView';
+// ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+import { useMockUpdateNodeTags } from '@/__mocks__/hooks';
 
 interface MindMapEditorProps {
   /** MindMap ID */
@@ -32,12 +41,87 @@ export function MindMapEditor({
 }: MindMapEditorProps) {
   const { currentView, getViewPreference } = useViewModeStore();
 
+  // Tag Dialog 狀態
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [selectedNodeForTag, setSelectedNodeForTag] = useState<string | null>(
+    null
+  );
+
+  // Export Dialog 狀態
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+  // 取得當前選中的 node
+  const selectedNodeIds = useMindMapStore((state) => state.selectedNodeIds);
+  const nodes = useMindMapStore((state) => state.nodes);
+  const edges = useMindMapStore((state) => state.edges);
+  const updateNode = useMindMapStore((state) => state.updateNode);
+
+  // ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+  const updateNodeTagsMutation = useMockUpdateNodeTags();
+
   // 啟用自動儲存（唯讀模式下不啟用）
   const { saveNow } = useAutoSave({
     mindmapId,
     debounceMs: 2000,
     enableOfflineStorage: true,
     enabled: !readonly,
+  });
+
+  /**
+   * 開啟 Tag Dialog
+   */
+  const openTagDialog = useCallback(() => {
+    if (selectedNodeIds.length === 0) {
+      // TODO: 顯示提示「請先選擇一個 node」
+      return;
+    }
+
+    // 只支援單個 node 加 tag
+    const nodeId = selectedNodeIds[0];
+    setSelectedNodeForTag(nodeId);
+    setTagDialogOpen(true);
+  }, [selectedNodeIds]);
+
+  /**
+   * 儲存 Node 的 Tags
+   * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+   */
+  const handleSaveTags = async (tagIds: string[]) => {
+    if (!selectedNodeForTag) return;
+
+    try {
+      // ⚠️ 假資料：模擬更新 Node Tags，實際應呼叫 updateNodeTagsMutation.mutateAsync()
+      await updateNodeTagsMutation.mutate({
+        nodeId: selectedNodeForTag,
+        tagIds,
+      });
+
+      // 更新 node 的 tags 資料
+      const node = nodes.find((n) => n.id === selectedNodeForTag);
+      if (node) {
+        // 從 tagStore 取得 tag 資訊
+        const tags = useTagStore.getState().tags;
+        const nodeTags = tagIds
+          .map((tagId) => tags.find((t) => t.id === tagId))
+          .filter((t): t is NonNullable<typeof t> => t !== undefined)
+          .map((t) => ({ id: t.id, name: t.name, color: t.color }));
+
+        updateNode({
+          id: selectedNodeForTag,
+          data: {
+            ...node.data,
+            tags: nodeTags,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update tags:', error);
+    }
+  };
+
+  // 註冊快捷鍵 Cmd+Shift+T
+  useHotkeys('cmd+shift+t, ctrl+shift+t', openTagDialog, {
+    enableOnFormTags: false,
   });
 
   /**
@@ -73,8 +157,20 @@ export function MindMapEditor({
       <div className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">心智圖編輯器</h1>
 
-        {/* 視圖切換器 */}
-        <ViewSwitcher mindmapId={mindmapId} />
+        <div className="flex items-center gap-2">
+          {/* 匯出按鈕 */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportDialogOpen(true)}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            匯出
+          </Button>
+
+          {/* 視圖切換器 */}
+          <ViewSwitcher mindmapId={mindmapId} />
+        </div>
       </div>
 
       {/* 視圖容器 */}
@@ -133,6 +229,29 @@ export function MindMapEditor({
           立即儲存
         </button>
       )}
+
+      {/* Tag Dialog */}
+      <TagDialog
+        open={tagDialogOpen}
+        onClose={() => setTagDialogOpen(false)}
+        nodeId={selectedNodeForTag || ''}
+        currentTags={
+          selectedNodeForTag
+            ? nodes
+                .find((n) => n.id === selectedNodeForTag)
+                ?.data.tags?.map((t) => t.id) || []
+            : []
+        }
+        onSave={handleSaveTags}
+      />
+
+      {/* 匯出 Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        nodes={nodes}
+        edges={edges}
+      />
     </div>
   );
 }

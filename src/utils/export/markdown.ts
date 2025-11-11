@@ -1,55 +1,99 @@
 /**
  * Markdown 匯出工具
- * 將 Outline 轉換為 Markdown 格式
  */
 
-import type { OutlineItem } from '@/types/view';
+import type { Node, Edge } from '@/types/mindmap';
 
 /**
- * 將 Outline 轉換為 Markdown 字串
- *
- * @param items - Outline 項目陣列
- * @returns Markdown 格式的字串
+ * 將心智圖匯出為 Markdown 格式
  */
-export function outlineToMarkdown(items: OutlineItem[]): string {
-  let markdown = '';
+export function exportToMarkdown(nodes: Node[], edges: Edge[]): string {
+  // 建立 nodeId -> children 的 map
+  const childrenMap = new Map<string, Node[]>();
+
+  edges.forEach((edge) => {
+    const children = childrenMap.get(edge.source) || [];
+    const childNode = nodes.find((n) => n.id === edge.target);
+
+    if (childNode) {
+      children.push(childNode);
+      childrenMap.set(edge.source, children);
+    }
+  });
+
+  // 找出所有 root nodes（沒有 incoming edge）
+  const rootNodes = nodes.filter(
+    (node) => !edges.some((edge) => edge.target === node.id)
+  );
 
   /**
-   * 遞迴處理項目，生成 Markdown
+   * 遞迴生成 Markdown
    */
-  function traverse(item: OutlineItem) {
-    // 根據層級決定使用標題還是列表
-    if (item.level === 0) {
-      // 第一層使用 H1
-      markdown += `# ${item.label}\n\n`;
-    } else if (item.level === 1) {
-      // 第二層使用 H2
-      markdown += `## ${item.label}\n\n`;
-    } else {
-      // 其他層級使用列表
-      const indent = '  '.repeat(item.level - 2);
-      markdown += `${indent}- ${item.label}\n`;
+  function generateMarkdown(node: Node, level: number): string {
+    const indent = '  '.repeat(level);
+    let markdown = `${indent}- ${node.data.label}\n`;
+
+    // 如果有 tags，加上 tags 資訊
+    if (node.data.tags && node.data.tags.length > 0) {
+      const tagNames = node.data.tags.map((t) => `#${t.name}`).join(' ');
+      markdown += `${indent}  ${tagNames}\n`;
     }
 
-    // 處理子項目
-    item.children.forEach(traverse);
+    // 處理子節點
+    const children = childrenMap.get(node.id) || [];
+    children.forEach((child) => {
+      markdown += generateMarkdown(child, level + 1);
+    });
+
+    return markdown;
   }
 
-  items.forEach(traverse);
+  // 生成完整的 Markdown
+  let fullMarkdown = '# Mind Map\n\n';
 
-  return markdown.trim();
+  rootNodes.forEach((rootNode) => {
+    fullMarkdown += generateMarkdown(rootNode, 0);
+    fullMarkdown += '\n';
+  });
+
+  return fullMarkdown.trim();
 }
 
 /**
- * 複製 Markdown 到剪貼簿
- *
- * @param markdown - Markdown 字串
+ * 將 Topic 整合視圖匯出為 Markdown
  */
-export async function copyMarkdownToClipboard(markdown: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(markdown);
-  } catch (error) {
-    console.error('複製到剪貼簿失敗:', error);
-    throw new Error('複製失敗');
-  }
+export function exportTopicToMarkdown(
+  topicName: string,
+  nodes: Node[],
+  edges: Edge[]
+): string {
+  let markdown = `# ${topicName}\n\n`;
+
+  // 按日期分組
+  const nodesByDate = new Map<string, Node[]>();
+
+  nodes.forEach((node) => {
+    if (node.data.createdAt) {
+      const dateStr = new Date(node.data.createdAt).toISOString().split('T')[0];
+      const nodesForDate = nodesByDate.get(dateStr) || [];
+      nodesForDate.push(node);
+      nodesByDate.set(dateStr, nodesForDate);
+    }
+  });
+
+  // 按日期排序
+  const sortedDates = Array.from(nodesByDate.keys()).sort();
+
+  sortedDates.forEach((date) => {
+    markdown += `## ${date}\n\n`;
+
+    const nodesForDate = nodesByDate.get(date) || [];
+    nodesForDate.forEach((node) => {
+      markdown += `- ${node.data.label}\n`;
+    });
+
+    markdown += '\n';
+  });
+
+  return markdown.trim();
 }
