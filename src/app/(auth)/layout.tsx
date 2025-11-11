@@ -1,6 +1,6 @@
 /**
- * 認證 Layout
- * 簡化版 Layout，無側邊欄
+ * 認證頁面的 Layout
+ * 提供簡潔的認證頁面樣式（無側邊欄）
  */
 export default function AuthLayout({
   children,
@@ -8,8 +8,8 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-md">{children}</div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {children}
     </div>
   );
 }

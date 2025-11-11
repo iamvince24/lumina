@@ -228,3 +228,160 @@ export function useMockUpdateMindMap(options?: {
     isLoading: isPending,
   };
 }
+
+/**
+ * Mock: 登入 API
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockSignIn(options?: {
+  onSuccess?: (data: {
+    user: { id: string; email: string; name: string };
+    token: string;
+  }) => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = async (params: { email: string; password: string }) => {
+    setIsPending(true);
+    try {
+      await mockDelay(500);
+
+      // 模擬登入驗證
+      // 預設帳號：test@example.com / Test1234
+      if (
+        params.email === 'test@example.com' &&
+        params.password === 'Test1234'
+      ) {
+        const mockUser = {
+          user: {
+            id: 'user-1',
+            email: 'test@example.com',
+            name: '測試使用者',
+          },
+          token: 'mock-jwt-token-' + Date.now(),
+        };
+
+        // 設定 cookie（模擬）
+        if (typeof document !== 'undefined') {
+          document.cookie = `lumina-auth=${mockUser.token}; path=/; max-age=86400`;
+        }
+
+        options?.onSuccess?.(mockUser);
+        return mockUser;
+      } else {
+        const error = new Error('帳號或密碼錯誤');
+        options?.onError?.(error);
+        throw error;
+      }
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return {
+    mutate,
+    isPending,
+    isLoading: isPending,
+  };
+}
+
+/**
+ * Mock: 註冊 API
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockSignUp(options?: {
+  onSuccess?: (data: {
+    user: { id: string; email: string; name: string };
+    token: string;
+  }) => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = async (params: {
+    name: string;
+    email: string;
+    password: string;
+  }) => {
+    setIsPending(true);
+    try {
+      await mockDelay(500);
+
+      // 模擬註冊（檢查 email 是否已存在）
+      if (params.email === 'test@example.com') {
+        const error = new Error('此 Email 已被註冊');
+        options?.onError?.(error);
+        throw error;
+      }
+
+      // 建立新使用者
+      const mockUser = {
+        user: {
+          id: 'user-' + Date.now(),
+          email: params.email,
+          name: params.name,
+        },
+        token: 'mock-jwt-token-' + Date.now(),
+      };
+
+      // 設定 cookie（模擬）
+      if (typeof document !== 'undefined') {
+        document.cookie = `lumina-auth=${mockUser.token}; path=/; max-age=86400`;
+      }
+
+      options?.onSuccess?.(mockUser);
+      return mockUser;
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return {
+    mutate,
+    isPending,
+    isLoading: isPending,
+  };
+}
+
+/**
+ * Mock: 登出 API
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockSignOut(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = async () => {
+    setIsPending(true);
+    try {
+      await mockDelay(300);
+
+      // 清除 cookie（模擬）
+      if (typeof document !== 'undefined') {
+        document.cookie = 'lumina-auth=; path=/; max-age=0';
+      }
+
+      options?.onSuccess?.();
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return {
+    mutate,
+    isPending,
+    isLoading: isPending,
+  };
+}

@@ -4,6 +4,7 @@
  */
 import { Suspense } from 'react';
 import { TabSystem } from '@/components/TabSystem';
+import { Header } from '@/components/Header';
 
 export default function MainLayout({
   children,
@@ -21,12 +22,8 @@ export default function MainLayout({
 
       {/* 主內容區域 */}
       <div className="flex-1 flex flex-col">
-        {/* TODO: Header */}
-        <header className="h-14 bg-white border-b border-gray-200">
-          <div className="h-full px-4 flex items-center">
-            <span className="text-sm text-gray-600">Header Placeholder</span>
-          </div>
-        </header>
+        {/* Header */}
+        <Header />
 
         {/* Tab 系統 - 使用 Suspense 包裹以優化載入 */}
         <Suspense fallback={<div className="h-10 bg-gray-50" />}>

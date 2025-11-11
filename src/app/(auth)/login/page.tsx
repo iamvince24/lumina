@@ -1,11 +1,162 @@
 /**
  * 登入頁面
+ * 路由: /login
+ *
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
+
+'use client';
+
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+// ⚠️ 暫時使用假資料 Hook，待後端 API 完成後替換為真實 API
+import { useMockSignIn } from '@/__mocks__/hooks';
+// import { api } from '@/utils/api';
+import { useAuthStore } from '@/stores/authStore';
+
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const setUser = useAuthStore((state) => state.setUser);
+
+  // 表單狀態
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // ⚠️ 暫時使用假資料 mutation，待後端 API 完成後替換為真實 API
+  const loginMutation = useMockSignIn({
+    onSuccess: (data) => {
+      // 儲存使用者資訊到 Store
+      setUser(data.user, data.token);
+
+      // 取得重導向 URL（如果有）
+      const redirectUrl = searchParams.get('redirect') || '/today';
+
+      // 重導向
+      router.push(redirectUrl);
+    },
+    onError: (error) => {
+      setError(error.message || '登入失敗，請檢查帳號密碼');
+    },
+  });
+
+  // ⚠️ 待後端 API 完成後，替換為真實 API
+  // const loginMutation = api.auth.signIn.useMutation({
+  //   onSuccess: (data) => {
+  //     setUser(data.user, data.token);
+  //     const redirectUrl = searchParams.get('redirect') || '/today';
+  //     router.push(redirectUrl);
+  //   },
+  //   onError: (error) => {
+  //     setError(error.message || '登入失敗，請檢查帳號密碼');
+  //   },
+  // });
+
+  /**
+   * 處理表單提交
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    // 驗證
+    if (!email || !password) {
+      setError('請填寫所有欄位');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setError('請輸入有效的 Email');
+      return;
+    }
+
+    // ⚠️ 暫時使用假資料 API，待後端 API 完成後替換為真實 API
+    loginMutation.mutate({ email, password });
+  };
+
   return (
-    <div className="bg-white p-8 rounded-lg shadow-lg">
-      <h1 className="text-2xl font-bold mb-4">登入</h1>
-      <p className="text-gray-600">登入表單將在這裡</p>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">登入 Lumina</CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 錯誤訊息 */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Email 欄位 */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loginMutation.isPending}
+              />
+            </div>
+
+            {/* 密碼欄位 */}
+            <div className="space-y-2">
+              <Label htmlFor="password">密碼</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loginMutation.isPending}
+              />
+            </div>
+
+            {/* 提交按鈕 */}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  登入中...
+                </>
+              ) : (
+                '登入'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-gray-600">
+            還沒有帳號？
+            <Link href="/signup" className="text-blue-600 hover:underline ml-1">
+              立即註冊
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
