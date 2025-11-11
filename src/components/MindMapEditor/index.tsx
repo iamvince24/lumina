@@ -149,7 +149,7 @@ export function MindMapEditor({
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-gray-50">
+    <div className="w-full h-screen flex flex-col bg-gray-50 mindmap-editor">
       {/* 儲存狀態指示器（唯讀模式下不顯示） */}
       {!readonly && <SaveStatusIndicator />}
 

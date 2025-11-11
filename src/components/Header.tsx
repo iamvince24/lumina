@@ -68,6 +68,14 @@ export function Header() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>我的帳戶</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                localStorage.removeItem('onboarding_completed');
+                window.location.reload();
+              }}
+            >
+              重新開始引導
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               登出

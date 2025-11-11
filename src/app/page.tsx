@@ -1,8 +1,20 @@
 /**
- * 首頁 - 重導向到今天的編輯頁面
+ * Landing Page
+ * 路由: /
  */
-import { redirect } from 'next/navigation';
 
-export default function HomePage() {
-  redirect('/today');
+import { Hero } from '@/components/Landing/Hero';
+import { Features } from '@/components/Landing/Features';
+import { UseCases } from '@/components/Landing/UseCases';
+import { CTA } from '@/components/Landing/CTA';
+
+export default function LandingPage() {
+  return (
+    <main className="min-h-screen">
+      <Hero />
+      <Features />
+      <UseCases />
+      <CTA />
+    </main>
+  );
 }

@@ -42,7 +42,7 @@ export function ViewSwitcher({ mindmapId }: ViewSwitcherProps) {
     <Tabs
       value={currentView}
       onValueChange={handleViewChange}
-      className="w-auto"
+      className="w-auto view-switcher"
     >
       <TabsList>
         {viewModeOptions.map((option) => (

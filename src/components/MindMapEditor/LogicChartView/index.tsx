@@ -3,11 +3,14 @@
  * 使用 SVG 繪製樹狀圖
  */
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import { useViewModeStore } from '@/stores/viewModeStore';
 import { calculateTreeLayout } from '@/utils/layoutAlgorithms/d3Tree';
+import { useLayoutWorker } from '@/hooks/useLayoutWorker';
+import { DirectionToggle } from './DirectionToggle';
+import type { TreeNode } from '@/types/view';
 
 /**
  * Logic Chart 視圖組件
@@ -17,20 +20,29 @@ export function LogicChartView() {
   const { nodes, edges } = useMindMapStore();
   const { layoutDirection, setLayoutDirection } = useViewModeStore();
 
+  // Layout Worker Hook
+  const { calculateLayout, isCalculating } = useLayoutWorker({
+    threshold: 200,
+  });
+
+  // Tree nodes 狀態
+  const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
+
   // SVG Container ref
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   /**
-   * 計算 Tree Layout（使用 useMemo 避免不必要的重新計算）
+   * 計算 Tree Layout（使用 Worker 或主執行緒）
    */
-  const treeNodes = useMemo(
-    () =>
-      calculateTreeLayout(nodes, edges, {
-        direction: layoutDirection,
-      }),
-    [nodes, edges, layoutDirection]
-  );
+  useEffect(() => {
+    const computeLayout = async () => {
+      const result = await calculateLayout(nodes, edges, layoutDirection);
+      setTreeNodes(result);
+    };
+
+    computeLayout();
+  }, [nodes, edges, layoutDirection, calculateLayout]);
 
   /**
    * 計算 SVG 的 viewBox（讓圖形置中）
@@ -129,21 +141,26 @@ export function LogicChartView() {
   /**
    * 切換佈局方向
    */
-  const handleToggleDirection = () => {
-    setLayoutDirection(layoutDirection === 'TB' ? 'LR' : 'TB');
+  const handleToggleDirection = (direction: 'TB' | 'LR') => {
+    setLayoutDirection(direction);
   };
 
   return (
     <div ref={containerRef} className="w-full h-full bg-white relative">
       {/* Header */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <button
-          onClick={handleToggleDirection}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          {layoutDirection === 'TB' ? '水平佈局' : '垂直佈局'}
-        </button>
+      <div className="absolute top-4 left-4 z-10">
+        <DirectionToggle
+          direction={layoutDirection}
+          onChange={handleToggleDirection}
+        />
       </div>
+
+      {/* Loading 狀態 */}
+      {isCalculating && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-20">
+          <div className="text-gray-600">計算佈局中...</div>
+        </div>
+      )}
 
       {/* SVG Canvas */}
       <svg ref={svgRef} className="w-full h-full" viewBox={viewBox}>

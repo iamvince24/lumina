@@ -5,13 +5,31 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { Download } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import {
   nodesToOutline,
   flattenOutlineItems,
   outlineToNodes,
 } from '@/utils/dataTransform/outline';
-import { OutlineItemComponent } from './OutlineItem';
+import { DraggableOutlineItem } from './DraggableOutlineItem';
+import { Button } from '@/components/ui/button';
+import { exportOutlinerToMarkdown } from '@/utils/export/outlinerMarkdown';
 import type { OutlineItem } from '@/types/view';
 
 /**
@@ -63,6 +81,14 @@ export const OutlinerView = () => {
 
   // 父容器 ref（用於虛擬滾動）
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // 拖曳感應器
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   /**
    * 當 Nodes 或 Edges 變更時，更新 Outline
@@ -313,52 +339,147 @@ export const OutlinerView = () => {
     }
   };
 
+  /**
+   * 處理拖曳結束
+   */
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    // 找到拖曳項目的索引
+    const oldIndex = flatItems.findIndex((item) => item.id === active.id);
+    const newIndex = flatItems.findIndex((item) => item.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // 檢查是否為同層級（簡化版本，只支援同層級拖曳）
+    const draggedItem = flatItems[oldIndex];
+    const targetItem = flatItems[newIndex];
+
+    if (draggedItem.level !== targetItem.level) {
+      // 不同層級，不處理（未來可以擴展）
+      return;
+    }
+
+    // 重新排列 flatItems
+    const newFlatItems = arrayMove(flatItems, oldIndex, newIndex);
+
+    // 重建樹狀結構
+    // 這是一個簡化版本，只處理同層級的重新排序
+    const newOutlineItems = JSON.parse(
+      JSON.stringify(outlineItems)
+    ) as OutlineItem[];
+
+    // 找到兩個項目在樹中的位置
+    const draggedFound = findItemInTree(newOutlineItems, draggedItem.id);
+    const targetFound = findItemInTree(newOutlineItems, targetItem.id);
+
+    if (!draggedFound || !targetFound) {
+      return;
+    }
+
+    // 如果它們在同一個父節點下
+    if (
+      draggedFound.parent?.id === targetFound.parent?.id ||
+      (!draggedFound.parent && !targetFound.parent)
+    ) {
+      const siblings = draggedFound.siblings;
+      const draggedSiblingIndex = draggedFound.index;
+      const targetSiblingIndex = targetFound.index;
+
+      // 重新排列
+      const [movedItem] = siblings.splice(draggedSiblingIndex, 1);
+      siblings.splice(targetSiblingIndex, 0, movedItem);
+
+      setOutlineItems(newOutlineItems);
+
+      // 轉換回 nodes 和 edges 並更新 store
+      const { nodes: updatedNodes, edges: updatedEdges } =
+        outlineToNodes(newOutlineItems);
+      updateNodes(updatedNodes);
+      updateEdges(updatedEdges);
+    }
+  };
+
+  /**
+   * 處理 Markdown 匯出
+   */
+  const handleExport = () => {
+    const markdown = exportOutlinerToMarkdown(outlineItems);
+
+    // 複製到剪貼簿
+    navigator.clipboard.writeText(markdown).then(() => {
+      // TODO: 顯示成功提示（可以使用 toast）
+      console.log('Markdown 已複製到剪貼簿');
+    });
+  };
+
   return (
     <div className="w-full h-full bg-white">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200">
+      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">大綱視圖</h2>
+        <Button size="sm" onClick={handleExport} variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          匯出 Markdown
+        </Button>
       </div>
 
       {/* 虛擬滾動容器 */}
-      <div ref={parentRef} className="h-[calc(100%-60px)] overflow-auto">
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={flatItems.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
         >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const item = flatItems[virtualItem.index];
+          <div ref={parentRef} className="h-[calc(100%-60px)] overflow-auto">
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const item = flatItems[virtualItem.index];
 
-            return (
-              <div
-                key={virtualItem.key}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <OutlineItemComponent
-                  item={item}
-                  isFocused={focusedId === item.id}
-                  onEdit={handleEdit}
-                  onToggleCollapse={handleToggleCollapse}
-                  onFocus={handleFocus}
-                  onEnter={handleEnter}
-                  onTab={handleTab}
-                  onShiftTab={handleShiftTab}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                return (
+                  <div
+                    key={virtualItem.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualItem.size}px`,
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <DraggableOutlineItem
+                      item={item}
+                      isFocused={focusedId === item.id}
+                      onEdit={handleEdit}
+                      onToggleCollapse={handleToggleCollapse}
+                      onFocus={handleFocus}
+                      onEnter={handleEnter}
+                      onTab={handleTab}
+                      onShiftTab={handleShiftTab}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };
