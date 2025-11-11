@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { MOCK_TOPICS, MOCK_MINDMAPS, MOCK_TOPIC_NODES } from './data';
 import type { MockTopic, MockMindMap, MockTopicNodes } from './types';
+import type { Node, Edge } from '@/types/mindmap';
 
 /**
  * 模擬 API 延遲
@@ -186,5 +187,44 @@ export function useMockUpdateTopicName() {
   return {
     mutate,
     isLoading,
+  };
+}
+
+/**
+ * Mock: 更新 MindMap (僅前端狀態)
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockUpdateMindMap(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = async (params: {
+    mindmapId: string;
+    nodes: Node[];
+    edges: Edge[];
+  }) => {
+    setIsPending(true);
+    try {
+      await mockDelay(500);
+
+      // 在實際應用中，這裡會更新 MOCK_MINDMAPS
+      // 但由於是 const，我們只做模擬
+      console.log('Mock: Update mindmap', params);
+
+      options?.onSuccess?.();
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return {
+    mutate,
+    isPending,
+    isLoading: isPending,
   };
 }
