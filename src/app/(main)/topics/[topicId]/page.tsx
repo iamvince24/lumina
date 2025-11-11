@@ -5,12 +5,15 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { TopicHeader } from '@/components/TopicSystem/TopicHeader';
 import { TopicViewSwitcher } from '@/components/TopicSystem/TopicViewSwitcher';
 import { IntegratedView } from '@/components/TopicSystem/IntegratedView';
 import { TopicCardView } from '@/components/TopicSystem/TopicCardView';
 import { TimelineView } from '@/components/TopicSystem/TimelineView';
 import { useViewModeStore } from '@/stores/viewModeStore';
+import { useTabStore } from '@/stores/tabStore';
+import { useMockTopicById } from '@/__mocks__/hooks';
 
 interface TopicDetailPageProps {
   params: {
@@ -24,6 +27,20 @@ interface TopicDetailPageProps {
 export default function TopicDetailPage({ params }: TopicDetailPageProps) {
   const { topicId } = params;
   const currentTopicView = useViewModeStore((state) => state.currentTopicView);
+  const { addTab } = useTabStore();
+  const { data: topic } = useMockTopicById(topicId);
+
+  // 在頁面載入時自動建立 Tab
+  useEffect(() => {
+    if (topic) {
+      addTab({
+        type: 'topic',
+        title: topic.name,
+        url: `/topics/${topicId}`,
+        isPinned: false,
+      });
+    }
+  }, [addTab, topicId, topic]);
 
   return (
     <div className="flex flex-col h-screen bg-white">

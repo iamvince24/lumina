@@ -5,10 +5,12 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { notFound } from 'next/navigation';
 import { isValid, parseISO } from 'date-fns';
 import { MindMapEditor } from '@/components/MindMapEditor';
 import { useMockMindMapByDate } from '@/__mocks__/hooks';
+import { useTabStore } from '@/stores/tabStore';
 
 interface EditorPageProps {
   params: {
@@ -26,6 +28,17 @@ export default function EditorPage({ params }: EditorPageProps) {
 
   // 取得該日期的 MindMap
   const { data: mindmap, isLoading, error } = useMockMindMapByDate(parsedDate);
+  const { addTab } = useTabStore();
+
+  // 在頁面載入時自動建立 Tab
+  useEffect(() => {
+    addTab({
+      type: 'editor',
+      title: `編輯器 - ${params.date}`,
+      url: `/editor/${params.date}`,
+      isPinned: false,
+    });
+  }, [addTab, params.date]);
 
   // 載入中狀態
   if (isLoading) {

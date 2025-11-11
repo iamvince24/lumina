@@ -5,14 +5,27 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { MindMapEditor } from '@/components/MindMapEditor';
 import { RecentTopicsSidebar } from '@/components/TopicSystem/RecentTopicsSidebar';
 import { useMockMindMapByDate } from '@/__mocks__/hooks';
+import { useTabStore } from '@/stores/tabStore';
 
 export default function TodayPage() {
   // 取得今天的 MindMap
   const today = new Date();
   const { data: mindmap, isLoading, error } = useMockMindMapByDate(today);
+  const { addTab } = useTabStore();
+
+  // 在頁面載入時自動建立 Tab
+  useEffect(() => {
+    addTab({
+      type: 'today',
+      title: '今天',
+      url: '/today',
+      isPinned: true, // 預設釘選
+    });
+  }, [addTab]);
 
   // 載入中狀態
   if (isLoading) {

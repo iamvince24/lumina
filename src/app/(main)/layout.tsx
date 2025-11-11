@@ -2,6 +2,8 @@
  * 主應用 Layout
  * 包含側邊欄和 Header
  */
+import { TabSystem } from '@/components/TabSystem';
+
 export default function MainLayout({
   children,
 }: {
@@ -18,12 +20,15 @@ export default function MainLayout({
 
       {/* 主內容區域 */}
       <div className="flex-1 flex flex-col">
-        {/* TODO: Header 和 Tab 系統 */}
+        {/* TODO: Header */}
         <header className="h-14 bg-white border-b border-gray-200">
           <div className="h-full px-4 flex items-center">
             <span className="text-sm text-gray-600">Header Placeholder</span>
           </div>
         </header>
+
+        {/* Tab 系統 */}
+        <TabSystem />
 
         {/* 頁面內容 */}
         <main className="flex-1 overflow-auto">{children}</main>
