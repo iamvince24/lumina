@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Calendar } from './Calendar';
 import { DayCard } from './DayCard';
 import type { MindMap } from '@/types/mindmap';
@@ -14,6 +15,8 @@ import type { MindMap } from '@/types/mindmap';
  * 月曆視圖組件
  */
 export function CalendarView() {
+  const router = useRouter();
+
   // 當前月份
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -49,10 +52,13 @@ export function CalendarView() {
 
   /**
    * 處理卡片點擊
+   * 導航到該日期的編輯頁面
    */
   const handleCardClick = () => {
-    // TODO: 導航到編輯頁面
-    console.log('Open editor for date:', selectedDate);
+    if (!selectedDate) return;
+
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    router.push(`/editor/${dateStr}`);
   };
 
   return (

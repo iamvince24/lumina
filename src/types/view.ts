@@ -18,6 +18,11 @@ export type ViewMode = 'radial' | 'outliner' | 'logicChart';
  */
 export type LayoutDirection = 'TB' | 'LR'; // Top-Bottom, Left-Right
 
+/**
+ * Topic 詳細頁的視圖模式
+ */
+export type TopicViewMode = 'integrated' | 'card' | 'timeline';
+
 // ========================================
 // 視圖設定
 // ========================================

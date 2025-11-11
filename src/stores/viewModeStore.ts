@@ -5,7 +5,12 @@
 
 import { create } from 'zustand';
 import { devtools, persist, type StorageValue } from 'zustand/middleware';
-import type { ViewMode, LayoutDirection, ViewPreference } from '@/types/view';
+import type {
+  ViewMode,
+  LayoutDirection,
+  ViewPreference,
+  TopicViewMode,
+} from '@/types/view';
 
 // ========================================
 // Store 介面定義
@@ -24,6 +29,9 @@ interface ViewModeStore {
 
   /** 是否正在切換視圖 */
   isSwitching: boolean;
+
+  /** Topic 詳細頁的當前視圖模式 */
+  currentTopicView: TopicViewMode;
 
   // === 視圖切換 ===
   /** 切換視圖模式 */
@@ -46,6 +54,10 @@ interface ViewModeStore {
   /** 清除視圖偏好 */
   clearViewPreference: (mindmapId: string) => void;
 
+  // === Topic 視圖切換 ===
+  /** 切換 Topic 視圖模式 */
+  setTopicView: (view: TopicViewMode) => void;
+
   // === 工具函式 ===
   /** 重置 Store */
   reset: () => void;
@@ -60,6 +72,7 @@ const initialState = {
   layoutDirection: 'TB' as LayoutDirection,
   viewPreferences: new Map<string, ViewPreference>(),
   isSwitching: false,
+  currentTopicView: 'integrated' as TopicViewMode,
 };
 
 // ========================================
@@ -128,6 +141,12 @@ export const useViewModeStore = create<ViewModeStore>()(
           });
         },
 
+        // === Topic 視圖切換 ===
+
+        setTopicView: (view: TopicViewMode) => {
+          set({ currentTopicView: view });
+        },
+
         // === 工具函式 ===
 
         reset: () => {
@@ -136,6 +155,7 @@ export const useViewModeStore = create<ViewModeStore>()(
       }),
       {
         name: 'view-mode-storage',
+        version: 2, // 增加版本號以處理 localStorage 遷移
         // 自訂序列化，因為 Map 無法直接序列化
         storage: {
           getItem: (name: string) => {

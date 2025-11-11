@@ -1,11 +1,55 @@
 /**
  * 今天的編輯頁面
+ * 路由: /today
  */
+
+'use client';
+
+import { MindMapEditor } from '@/components/MindMapEditor';
+import { RecentTopicsSidebar } from '@/components/TopicSystem/RecentTopicsSidebar';
+import { useMockMindMapByDate } from '@/__mocks__/hooks';
+
 export default function TodayPage() {
+  // 取得今天的 MindMap
+  const today = new Date();
+  const { data: mindmap, isLoading, error } = useMockMindMapByDate(today);
+
+  // 載入中狀態
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-gray-600">載入中...</div>
+      </div>
+    );
+  }
+
+  // 錯誤狀態
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-red-600">載入失敗: {error.message}</div>
+      </div>
+    );
+  }
+
+  // 沒有 mindmap (不應該發生)
+  if (!mindmap) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-gray-600">無法載入心智圖</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">今天的編輯頁面</h1>
-      <p className="text-gray-600 mt-2">這裡將顯示心智圖編輯器</p>
+    <div className="flex h-screen">
+      {/* 主編輯區域 */}
+      <div className="flex-1">
+        <MindMapEditor mindmapId={mindmap.id} />
+      </div>
+
+      {/* 右側邊欄：最近使用的 Topics */}
+      <RecentTopicsSidebar />
     </div>
   );
 }
