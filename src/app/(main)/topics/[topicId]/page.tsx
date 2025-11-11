@@ -6,14 +6,49 @@
 'use client';
 
 import { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { TopicHeader } from '@/components/TopicSystem/TopicHeader';
 import { TopicViewSwitcher } from '@/components/TopicSystem/TopicViewSwitcher';
-import { IntegratedView } from '@/components/TopicSystem/IntegratedView';
-import { TopicCardView } from '@/components/TopicSystem/TopicCardView';
-import { TimelineView } from '@/components/TopicSystem/TimelineView';
 import { useViewModeStore } from '@/stores/viewModeStore';
 import { useTabStore } from '@/stores/tabStore';
 import { useMockTopicById } from '@/__mocks__/hooks';
+
+// 動態匯入視圖組件，減少初始 bundle size
+const IntegratedView = dynamic(
+  () =>
+    import('@/components/TopicSystem/IntegratedView').then((mod) => ({
+      default: mod.IntegratedView,
+    })),
+  {
+    loading: () => (
+      <div className="animate-pulse h-64 bg-gray-200 rounded"></div>
+    ),
+  }
+);
+
+const TopicCardView = dynamic(
+  () =>
+    import('@/components/TopicSystem/TopicCardView').then((mod) => ({
+      default: mod.TopicCardView,
+    })),
+  {
+    loading: () => (
+      <div className="animate-pulse h-64 bg-gray-200 rounded"></div>
+    ),
+  }
+);
+
+const TimelineView = dynamic(
+  () =>
+    import('@/components/TopicSystem/TimelineView').then((mod) => ({
+      default: mod.TimelineView,
+    })),
+  {
+    loading: () => (
+      <div className="animate-pulse h-64 bg-gray-200 rounded"></div>
+    ),
+  }
+);
 
 interface TopicDetailPageProps {
   params: {

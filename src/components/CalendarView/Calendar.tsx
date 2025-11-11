@@ -4,6 +4,7 @@
  */
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -179,37 +180,48 @@ export function Calendar({
 
       {/* 日期網格 */}
       <div className="flex-1 grid grid-cols-7 gap-px bg-gray-200">
-        {calendarData.map((date, index) => (
-          <button
-            key={index}
-            onClick={() => onDateSelect(date)}
-            className={cn(
-              'bg-white p-2 hover:bg-gray-50 transition-colors relative',
-              !isCurrentMonth(date) && 'text-gray-400',
-              isSelected(date) && 'bg-blue-50 border-2 border-blue-500'
-            )}
-            aria-label={`選擇日期 ${formatDate(date)}`}
-            tabIndex={0}
-          >
-            {/* 日期數字 */}
-            <div
-              className={cn(
-                'text-sm font-medium',
-                isToday(date) &&
-                  'w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 text-white mx-auto'
-              )}
-            >
-              {date.getDate()}
-            </div>
+        {calendarData.map((date, index) => {
+          const dateStr = formatDate(date);
+          const editorUrl = `/editor/${dateStr}`;
 
-            {/* 輸出標記 */}
-            {hasOutput(date) && (
-              <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                <div className="w-1 h-1 bg-blue-500 rounded-full" />
+          return (
+            <Link
+              key={index}
+              href={editorUrl}
+              prefetch={true}
+              onClick={(e) => {
+                // 阻止預設導航行為，只執行日期選擇（用於顯示卡片）
+                e.preventDefault();
+                onDateSelect(date);
+              }}
+              className={cn(
+                'bg-white p-2 hover:bg-gray-50 transition-colors relative block',
+                !isCurrentMonth(date) && 'text-gray-400',
+                isSelected(date) && 'bg-blue-50 border-2 border-blue-500'
+              )}
+              aria-label={`選擇日期 ${dateStr}`}
+              tabIndex={0}
+            >
+              {/* 日期數字 */}
+              <div
+                className={cn(
+                  'text-sm font-medium',
+                  isToday(date) &&
+                    'w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 text-white mx-auto'
+                )}
+              >
+                {date.getDate()}
               </div>
-            )}
-          </button>
-        ))}
+
+              {/* 輸出標記 */}
+              {hasOutput(date) && (
+                <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                  <div className="w-1 h-1 bg-blue-500 rounded-full" />
+                </div>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

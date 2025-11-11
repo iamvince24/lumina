@@ -2,6 +2,7 @@
  * 主應用 Layout
  * 包含側邊欄和 Header
  */
+import { Suspense } from 'react';
 import { TabSystem } from '@/components/TabSystem';
 
 export default function MainLayout({
@@ -27,11 +28,23 @@ export default function MainLayout({
           </div>
         </header>
 
-        {/* Tab 系統 */}
-        <TabSystem />
+        {/* Tab 系統 - 使用 Suspense 包裹以優化載入 */}
+        <Suspense fallback={<div className="h-10 bg-gray-50" />}>
+          <TabSystem />
+        </Suspense>
 
-        {/* 頁面內容 */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        {/* 頁面內容 - 使用 Suspense 包裹以優化載入 */}
+        <main className="flex-1 overflow-auto">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full">
+                <div className="text-gray-600">載入中...</div>
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
+        </main>
       </div>
     </div>
   );
