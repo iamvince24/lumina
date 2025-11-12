@@ -8,7 +8,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
 import { TabSystem } from '@/components/TabSystem';
-import { Header } from '@/components/Header';
+import { Header } from '@/components/Layout';
 import { CommandPalette } from '@/components/CommandPalette';
 import { Onboarding } from '@/components/Onboarding';
 import { useAuthStore } from '@/stores/authStore';
