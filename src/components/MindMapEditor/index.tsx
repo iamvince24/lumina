@@ -14,7 +14,7 @@ import { useViewModeStore } from '@/stores/viewModeStore';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import { useTagStore } from '@/stores/tagStore';
-import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
+import { SaveStatusIndicator } from '@/components/SaveStatus';
 import { TagDialog } from '@/components/TagSystem/TagDialog';
 import { ExportDialog } from '@/components/ExportSystem/ExportDialog';
 import { ViewSwitcher } from './ViewSwitcher';

@@ -4,7 +4,7 @@
 'use client';
 
 import { X, Pin } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 import type { Tab } from '@/stores/tabStore';
 
 interface TabItemProps {
