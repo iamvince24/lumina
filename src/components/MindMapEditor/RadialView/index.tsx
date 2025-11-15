@@ -17,6 +17,7 @@ import ReactFlow, {
   type NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { Plus } from 'lucide-react';
 
 import { CustomNode } from './CustomNode';
 import { useMindMapStore } from '@/stores/mindmapStore';
@@ -46,6 +47,7 @@ export function RadialView() {
     updateNodes,
     updateEdges,
     setSelectedNodes,
+    addNode,
   } = useMindMapStore();
 
   // React Flow 的 Nodes 和 Edges 狀態
@@ -165,6 +167,33 @@ export function RadialView() {
   }, [nodes, edges, setNodes, updateNodes]);
 
   /**
+   * 新增節點
+   * 如果沒有節點，新增根節點；否則新增到選中節點
+   */
+  const handleAddNode = useCallback(() => {
+    if (nodes.length === 0) {
+      // 新增第一個根節點
+      addNode({
+        label: '中心主題',
+        isTopic: true,
+        position: { x: 250, y: 250 },
+      });
+    } else if (selectedNodeIds.length > 0) {
+      // 新增子節點到選中的節點
+      addNode({
+        label: '新節點',
+        parentId: selectedNodeIds[0],
+      });
+    } else {
+      // 沒有選中節點，新增根節點
+      addNode({
+        label: '新主題',
+        isTopic: true,
+      });
+    }
+  }, [nodes.length, selectedNodeIds, addNode]);
+
+  /**
    * 同步選中的 Node IDs 到 React Flow
    */
   useEffect(() => {
@@ -213,7 +242,14 @@ export function RadialView() {
   }, []);
 
   return (
-    <div className="w-full h-full">
+    <div
+      className="w-full h-full relative"
+      tabIndex={0}
+      onKeyDown={() => {
+        // 確保快捷鍵能夠觸發，不做任何處理
+        // 只是確保容器可以接收鍵盤事件
+      }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -240,15 +276,36 @@ export function RadialView() {
         />
 
         {/* 自訂控制按鈕 */}
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
           <button
-            onClick={handleAutoLayout}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+            onClick={handleAddNode}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
-            自動排列
+            <Plus className="w-4 h-4" />
+            新增節點
           </button>
+          {nodes.length > 0 && (
+            <button
+              onClick={handleAutoLayout}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+            >
+              自動排列
+            </button>
+          )}
         </div>
       </ReactFlow>
+
+      {/* 空狀態提示 */}
+      {nodes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+          <div className="text-center">
+            <div className="text-gray-400 text-lg mb-2">尚未建立任何節點</div>
+            <div className="text-gray-300 text-sm">
+              點擊右上角的「新增節點」按鈕開始建立心智圖
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

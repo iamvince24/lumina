@@ -1,8 +1,6 @@
 /**
  * 自動儲存 Hook
- * 當 MindMap 資料變更時，自動觸發儲存
- *
- * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ * 當 MindMap 資料變更時，自動觸發儲存到 localStorage
  */
 
 import { useEffect, useRef, useMemo } from 'react';
@@ -10,9 +8,8 @@ import { debounce } from 'lodash-es';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import { useSaveStatusStore } from '@/stores/saveStatusStore';
 import type { Node, Edge } from '@/types/mindmap';
-// ⚠️ 暫時使用假資料 Hook，待後端 API 完成後替換為真實 API
-import { useMockUpdateMindMap } from '@/__mocks__/hooks';
-// import { api } from '@/utils/api';
+import { saveMindMap } from '@/services/localStorage/mindmapStorage';
+import { toast } from 'sonner';
 
 interface UseAutoSaveOptions {
   /** MindMap ID */
@@ -45,65 +42,68 @@ export function useAutoSave(options: UseAutoSaveOptions) {
   const { setStatus, setError, setSaved } = useSaveStatusStore();
 
   // 儲存函式參考（避免重新建立）
-  // 使用 useMemo 確保 debounceMs 改變時重新建立 debounce 函式
   const saveRef = useRef<ReturnType<typeof debounce> | null>(null);
 
-  // ⚠️ 暫時使用假資料 mutation，待後端 API 完成後替換為真實 API
-  const updateMindMapMutation = useMockUpdateMindMap({
-    onSuccess: () => {
-      // 儲存成功
-      setSaved();
-
-      // 如果啟用離線儲存，清除 localStorage buffer
-      if (enableOfflineStorage) {
-        localStorage.removeItem(`mindmap_buffer_${mindmapId}`);
-      }
-    },
-    onError: (error) => {
-      console.error('Auto-save failed:', error);
-      setError('儲存失敗，請檢查網路連線');
-
-      // 如果啟用離線儲存，將資料暫存到 localStorage
-      // 從 Store 取得最新的 nodes 和 edges
-      if (enableOfflineStorage) {
-        try {
-          const currentNodes = useMindMapStore.getState().nodes;
-          const currentEdges = useMindMapStore.getState().edges;
-          localStorage.setItem(
-            `mindmap_buffer_${mindmapId}`,
-            JSON.stringify({
-              nodes: currentNodes,
-              edges: currentEdges,
-              timestamp: Date.now(),
-            })
-          );
-        } catch (storageError) {
-          console.error('Failed to save to localStorage:', storageError);
-        }
-      }
-    },
-  });
-  // const updateMindMapMutation = api.mindmap.update.useMutation();
+  // 取得當前時間戳記
+  const timestamp = new Date().toISOString();
 
   // 建立 debounce 函式（當 debounceMs 改變時重新建立）
   const debouncedSave = useMemo(
     () =>
-      debounce(async (mindmapId: string, nodes: Node[], edges: Edge[]) => {
+      debounce((mindmapId: string, nodes: Node[], edges: Edge[]) => {
         try {
           setStatus('saving');
 
-          // ⚠️ 暫時使用假資料 API，待後端 API 完成後替換為真實 API
-          await updateMindMapMutation.mutate({
-            mindmapId,
-            nodes,
-            edges,
-          });
+          // 儲存到 localStorage
+          const result = saveMindMap(nodes, edges);
+
+          if (result.success) {
+            // 儲存成功
+            setSaved();
+
+            // 如果啟用離線儲存，清除 buffer（現在已經直接儲存，不再需要 buffer）
+            if (enableOfflineStorage) {
+              try {
+                localStorage.removeItem(`mindmap_buffer_${mindmapId}`);
+              } catch (error) {
+                console.error('Failed to clear buffer:', error);
+              }
+            }
+          } else {
+            // 儲存失敗
+            console.error('Save failed:', result.error);
+            setError(result.error || '儲存失敗');
+
+            // 顯示錯誤提示
+            toast.error('儲存失敗', {
+              description:
+                result.error === 'QuotaExceededError'
+                  ? 'localStorage 容量不足，請匯出資料或清理舊資料'
+                  : '無法儲存資料，請檢查瀏覽器設定',
+            });
+
+            // 如果啟用離線儲存且儲存失敗，將資料暫存到 buffer
+            if (enableOfflineStorage) {
+              try {
+                localStorage.setItem(
+                  `mindmap_buffer_${mindmapId}`,
+                  JSON.stringify({
+                    nodes,
+                    edges,
+                    timestamp: timestamp,
+                  })
+                );
+              } catch (bufferError) {
+                console.error('Failed to save to buffer:', bufferError);
+              }
+            }
+          }
         } catch (error) {
-          // 錯誤處理已在 onError callback 中處理
           console.error('Auto-save error:', error);
+          setError('儲存過程發生錯誤');
         }
       }, debounceMs),
-    [debounceMs, setStatus, updateMindMapMutation]
+    [debounceMs, setStatus, setSaved, setError, enableOfflineStorage]
   );
 
   // 將 debouncedSave 儲存到 ref，以便在 cleanup 時取消

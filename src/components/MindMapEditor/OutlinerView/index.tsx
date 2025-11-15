@@ -30,6 +30,7 @@ import {
 import { DraggableOutlineItem } from './DraggableOutlineItem';
 import { Button } from '@/components/ui/button';
 import { exportOutlinerToMarkdown } from '@/utils/export/outlinerMarkdown';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { OutlineItem } from '@/types/view';
 
 /**
@@ -71,8 +72,15 @@ function findItemInTree(
  */
 export const OutlinerView = () => {
   // 從 Store 取得資料
-  const { nodes, edges, updateNode, updateNodes, updateEdges, addNode } =
-    useMindMapStore();
+  const {
+    nodes,
+    edges,
+    updateNode,
+    updateNodes,
+    updateEdges,
+    addNode,
+    selectedNodeIds,
+  } = useMindMapStore();
 
   // Outline 狀態
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([]);
@@ -81,6 +89,17 @@ export const OutlinerView = () => {
 
   // 父容器 ref（用於虛擬滾動）
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // 啟用全局快捷鍵（只在沒有聚焦到 input 時）
+  const selectedNodeId = useMemo(
+    () => selectedNodeIds[0] || focusedId || undefined,
+    [selectedNodeIds, focusedId]
+  );
+
+  useKeyboardShortcuts({
+    enabled: true,
+    selectedNodeId,
+  });
 
   // 拖曳感應器
   const sensors = useSensors(

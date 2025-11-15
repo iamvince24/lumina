@@ -56,7 +56,12 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
 
       toast.success('已新增節點');
     },
-    { enabled }
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
   );
 
   /**
@@ -80,7 +85,12 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
 
       toast.success('已新增子節點');
     },
-    { enabled }
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
   );
 
   /**
@@ -99,7 +109,12 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
       deleteNode(selectedNodeId);
       toast.success('已刪除節點');
     },
-    { enabled }
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
   );
 
   /**
@@ -111,7 +126,12 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
       e.preventDefault();
       toast.info('復原功能開發中');
     },
-    { enabled }
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
   );
 
   /**
@@ -123,7 +143,12 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
       e.preventDefault();
       toast.info('重做功能開發中');
     },
-    { enabled }
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
   );
 
   /**
@@ -146,6 +171,11 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
 
       toast.success('已設為 Topic');
     },
-    { enabled }
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
   );
 }

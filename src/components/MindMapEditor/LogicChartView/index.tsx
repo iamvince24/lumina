@@ -9,6 +9,7 @@ import { useMindMapStore } from '@/stores/mindmapStore';
 import { useViewModeStore } from '@/stores/viewModeStore';
 import { calculateTreeLayout } from '@/utils/layoutAlgorithms/d3Tree';
 import { useLayoutWorker } from '@/hooks/useLayoutWorker';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { DirectionToggle } from './DirectionToggle';
 import type { TreeNode } from '@/types/view';
 
@@ -17,7 +18,7 @@ import type { TreeNode } from '@/types/view';
  */
 export function LogicChartView() {
   // 從 Store 取得資料
-  const { nodes, edges } = useMindMapStore();
+  const { nodes, edges, selectedNodeIds } = useMindMapStore();
   const { layoutDirection, setLayoutDirection } = useViewModeStore();
 
   // Layout Worker Hook
@@ -31,6 +32,17 @@ export function LogicChartView() {
   // SVG Container ref
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 啟用全局快捷鍵
+  const selectedNodeId = useMemo(
+    () => selectedNodeIds[0] || undefined,
+    [selectedNodeIds]
+  );
+
+  useKeyboardShortcuts({
+    enabled: true,
+    selectedNodeId,
+  });
 
   /**
    * 計算 Tree Layout（使用 Worker 或主執行緒）
@@ -146,7 +158,14 @@ export function LogicChartView() {
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-white relative">
+    <div
+      ref={containerRef}
+      className="w-full h-full bg-white relative"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        // 確保快捷鍵能夠觸發
+      }}
+    >
       {/* Header */}
       <div className="absolute top-4 left-4 z-10">
         <DirectionToggle

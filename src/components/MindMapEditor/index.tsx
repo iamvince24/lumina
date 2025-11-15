@@ -17,12 +17,11 @@ import { useTagStore } from '@/stores/tagStore';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
 import { TagDialog } from '@/components/TagSystem/TagDialog';
 import { ExportDialog } from '@/components/ExportSystem/ExportDialog';
+import { DataManagement } from './DataManagement';
 import { ViewSwitcher } from './ViewSwitcher';
 import { RadialView } from './RadialView';
 import { OutlinerView } from './OutlinerView';
 import { LogicChartView } from './LogicChartView';
-// ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
-import { useMockUpdateNodeTags } from '@/__mocks__/hooks';
 
 interface MindMapEditorProps {
   /** MindMap ID */
@@ -56,9 +55,6 @@ export function MindMapEditor({
   const edges = useMindMapStore((state) => state.edges);
   const updateNode = useMindMapStore((state) => state.updateNode);
 
-  // ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
-  const updateNodeTagsMutation = useMockUpdateNodeTags();
-
   // 啟用自動儲存（唯讀模式下不啟用）
   const { saveNow } = useAutoSave({
     mindmapId,
@@ -84,18 +80,12 @@ export function MindMapEditor({
 
   /**
    * 儲存 Node 的 Tags
-   * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+   * 直接更新到本地 store，由自動儲存處理 localStorage 同步
    */
-  const handleSaveTags = async (tagIds: string[]) => {
+  const handleSaveTags = (tagIds: string[]) => {
     if (!selectedNodeForTag) return;
 
     try {
-      // ⚠️ 假資料：模擬更新 Node Tags，實際應呼叫 updateNodeTagsMutation.mutateAsync()
-      await updateNodeTagsMutation.mutate({
-        nodeId: selectedNodeForTag,
-        tagIds,
-      });
-
       // 更新 node 的 tags 資料
       const node = nodes.find((n) => n.id === selectedNodeForTag);
       if (node) {
@@ -158,6 +148,9 @@ export function MindMapEditor({
         <h1 className="text-xl font-semibold text-gray-800">心智圖編輯器</h1>
 
         <div className="flex items-center gap-2">
+          {/* 資料管理 */}
+          <DataManagement />
+
           {/* 匯出按鈕 */}
           <Button
             variant="outline"
