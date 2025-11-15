@@ -5,7 +5,18 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { MOCK_TOPICS, MOCK_MINDMAPS, MOCK_TOPIC_NODES } from './data';
+import {
+  MOCK_TOPICS,
+  MOCK_MINDMAPS,
+  MOCK_TOPIC_NODES,
+  MOCK_DELETED_TOPICS,
+  MOCK_DELETED_NODES,
+  MOCK_DELETED_MINDMAPS,
+  MOCK_CALENDAR_ENTRIES,
+  type DeletedTopic,
+  type DeletedNode,
+  type DeletedMindMap,
+} from './data';
 import type { MockTopic, MockMindMap, MockTopicNodes } from './types';
 import type { Node, Edge } from '@/types/mindmap';
 import type { Tag } from '@/types/tag';
@@ -496,12 +507,8 @@ export function useMockUpdateNodeTags(options?: {
  * Mock: 取得已刪除的 Topics
  * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
-export function useMockGetDeletedTopics(): UseQueryResult<
-  Array<{ id: string; name: string; deletedAt: Date }>
-> {
-  const [data, setData] = useState<
-    Array<{ id: string; name: string; deletedAt: Date }> | undefined
-  >();
+export function useMockGetDeletedTopics(): UseQueryResult<DeletedTopic[]> {
+  const [data, setData] = useState<DeletedTopic[] | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -509,13 +516,7 @@ export function useMockGetDeletedTopics(): UseQueryResult<
     setIsLoading(true);
     try {
       await mockDelay(300);
-      // 模擬已刪除的 Topics
-      const mockDeletedTopics: Array<{
-        id: string;
-        name: string;
-        deletedAt: Date;
-      }> = [];
-      setData(mockDeletedTopics);
+      setData(MOCK_DELETED_TOPICS);
     } catch (e) {
       setError(e as Error);
     } finally {
@@ -534,12 +535,8 @@ export function useMockGetDeletedTopics(): UseQueryResult<
  * Mock: 取得已刪除的 Nodes
  * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
-export function useMockGetDeletedNodes(): UseQueryResult<
-  Array<{ id: string; label: string; deletedAt: Date }>
-> {
-  const [data, setData] = useState<
-    Array<{ id: string; label: string; deletedAt: Date }> | undefined
-  >();
+export function useMockGetDeletedNodes(): UseQueryResult<DeletedNode[]> {
+  const [data, setData] = useState<DeletedNode[] | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -547,13 +544,7 @@ export function useMockGetDeletedNodes(): UseQueryResult<
     setIsLoading(true);
     try {
       await mockDelay(300);
-      // 模擬已刪除的 Nodes
-      const mockDeletedNodes: Array<{
-        id: string;
-        label: string;
-        deletedAt: Date;
-      }> = [];
-      setData(mockDeletedNodes);
+      setData(MOCK_DELETED_NODES);
     } catch (e) {
       setError(e as Error);
     } finally {
@@ -572,12 +563,8 @@ export function useMockGetDeletedNodes(): UseQueryResult<
  * Mock: 取得已刪除的 MindMaps
  * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
-export function useMockGetDeletedMindMaps(): UseQueryResult<
-  Array<{ id: string; title: string; deletedAt: Date }>
-> {
-  const [data, setData] = useState<
-    Array<{ id: string; title: string; deletedAt: Date }> | undefined
-  >();
+export function useMockGetDeletedMindMaps(): UseQueryResult<DeletedMindMap[]> {
+  const [data, setData] = useState<DeletedMindMap[] | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -585,13 +572,7 @@ export function useMockGetDeletedMindMaps(): UseQueryResult<
     setIsLoading(true);
     try {
       await mockDelay(300);
-      // 模擬已刪除的 MindMaps
-      const mockDeletedMindMaps: Array<{
-        id: string;
-        title: string;
-        deletedAt: Date;
-      }> = [];
-      setData(mockDeletedMindMaps);
+      setData(MOCK_DELETED_MINDMAPS);
     } catch (e) {
       setError(e as Error);
     } finally {
@@ -666,4 +647,159 @@ export function useMockPermanentDeleteTopic(options?: {
     mutate,
     isLoading,
   };
+}
+
+/**
+ * Mock: 取得使用者設定
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockGetUserSettings(): UseQueryResult<any> {
+  const [data, setData] = useState<any | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await mockDelay(300);
+        // 從 localStorage 取得或使用預設值
+        const savedSettings = localStorage.getItem('user-settings');
+        if (savedSettings) {
+          setData(JSON.parse(savedSettings));
+        } else {
+          // 使用預設設定
+          const { MOCK_USER_SETTINGS } = await import('./settingsData');
+          setData(MOCK_USER_SETTINGS);
+        }
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+/**
+ * Mock: 更新使用者設定
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockUpdateUserSettings(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const mutate = async (params: any) => {
+    setIsLoading(true);
+    try {
+      await mockDelay(300);
+      // 儲存到 localStorage
+      localStorage.setItem('user-settings', JSON.stringify(params));
+      options?.onSuccess?.();
+    } catch (error) {
+      options?.onError?.(error as Error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    mutate,
+    isLoading,
+  };
+}
+
+/**
+ * Mock: 取得月曆資料
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockGetCalendarEntries(params: {
+  year: number;
+  month: number;
+}): UseQueryResult<
+  Record<
+    string,
+    {
+      date: string;
+      hasContent: boolean;
+      nodeCount: number;
+      topicCount: number;
+      preview?: string;
+    }
+  >
+> {
+  const [data, setData] = useState<any | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await mockDelay(300);
+        // 過濾出指定月份的資料
+        const filteredEntries = Object.entries(MOCK_CALENDAR_ENTRIES).reduce(
+          (acc, [key, value]) => {
+            const date = new Date(key);
+            if (
+              date.getFullYear() === params.year &&
+              date.getMonth() + 1 === params.month
+            ) {
+              acc[key] = value;
+            }
+            return acc;
+          },
+          {} as any
+        );
+        setData(filteredEntries);
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [params.year, params.month]);
+
+  return { data, isLoading, error };
+}
+
+/**
+ * Mock: 取得所有 Topics（用於 topics 列表頁）
+ * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ */
+export function useMockAllTopics(): UseQueryResult<MockTopic[]> {
+  const [data, setData] = useState<MockTopic[] | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await mockDelay(300);
+        // 按最後更新時間排序
+        const sorted = [...MOCK_TOPICS].sort(
+          (a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime()
+        );
+        setData(sorted);
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error };
 }
