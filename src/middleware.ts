@@ -23,6 +23,12 @@ const protectedRoutes = [
 const authRoutes = ['/login', '/signup'];
 
 export function middleware(request: NextRequest) {
+  // 暫時禁用認證檢查，允許直接訪問所有頁面
+  // TODO: 完成應用程式功能開發後，重新啟用認證
+  return NextResponse.next();
+
+  /*
+  // 原始認證邏輯（已暫時禁用）
   const { pathname } = request.nextUrl;
 
   // 檢查是否有認證 token（從 cookie）
@@ -48,6 +54,7 @@ export function middleware(request: NextRequest) {
   }
 
   return NextResponse.next();
+  */
 }
 
 export const config = {
