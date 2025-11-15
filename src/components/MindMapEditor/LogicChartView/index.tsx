@@ -42,6 +42,7 @@ export function LogicChartView() {
   useKeyboardShortcuts({
     enabled: true,
     selectedNodeId,
+    currentView: 'logicChart',
   });
 
   /**

@@ -20,7 +20,9 @@ import 'reactflow/dist/style.css';
 import { Plus } from 'lucide-react';
 
 import { CustomNode } from './CustomNode';
+import { DirectionToggle } from '../LogicChartView/DirectionToggle';
 import { useMindMapStore } from '@/stores/mindmapStore';
+import { useViewModeStore } from '@/stores/viewModeStore';
 import { calculateRadialLayout } from '@/utils/layoutAlgorithms/radial';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { Node, Edge } from '@/types/mindmap';
@@ -49,6 +51,9 @@ export function RadialView() {
     setSelectedNodes,
     addNode,
   } = useMindMapStore();
+
+  // 從 ViewModeStore 取得佈局方向
+  const { layoutDirection, setLayoutDirection } = useViewModeStore();
 
   // React Flow 的 Nodes 和 Edges 狀態
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
@@ -160,11 +165,12 @@ export function RadialView() {
   const handleAutoLayout = useCallback(() => {
     const layoutedNodes = calculateRadialLayout(
       nodes as Node[],
-      edges as Edge[]
+      edges as Edge[],
+      layoutDirection
     );
     setNodes(layoutedNodes);
     updateNodes(layoutedNodes);
-  }, [nodes, edges, setNodes, updateNodes]);
+  }, [nodes, edges, layoutDirection, setNodes, updateNodes]);
 
   /**
    * 新增節點
@@ -215,6 +221,7 @@ export function RadialView() {
   useKeyboardShortcuts({
     enabled: true,
     selectedNodeId,
+    currentView: 'radial',
   });
 
   /**
@@ -277,6 +284,12 @@ export function RadialView() {
 
         {/* 自訂控制按鈕 */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
+          {/* 方向切換 */}
+          <DirectionToggle
+            direction={layoutDirection}
+            onChange={setLayoutDirection}
+          />
+
           <button
             onClick={handleAddNode}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center gap-2"

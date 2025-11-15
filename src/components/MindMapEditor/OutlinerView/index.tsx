@@ -99,6 +99,7 @@ export const OutlinerView = () => {
   useKeyboardShortcuts({
     enabled: true,
     selectedNodeId,
+    currentView: 'outliner',
   });
 
   // 拖曳感應器
