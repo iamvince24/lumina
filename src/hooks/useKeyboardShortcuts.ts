@@ -6,6 +6,7 @@
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import { toast } from 'sonner';
+import type { ViewMode } from '@/types/view';
 
 /**
  * 快捷鍵設定
@@ -16,6 +17,9 @@ export interface ShortcutConfig {
 
   /** 當前選中的 Node ID */
   selectedNodeId?: string;
+
+  /** 當前視圖模式 */
+  currentView?: ViewMode;
 }
 
 /**
@@ -24,7 +28,7 @@ export interface ShortcutConfig {
  * @param config - 快捷鍵設定
  */
 export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
-  const { enabled = true, selectedNodeId } = config;
+  const { enabled = true, selectedNodeId, currentView } = config;
 
   const { addNode, deleteNode, updateNode } = useMindMapStore();
 
@@ -170,6 +174,40 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
       });
 
       toast.success('已設為 Topic');
+    },
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
+  );
+
+  /**
+   * Tab: 新增子 Node（僅在 RadialView 中）
+   */
+  useHotkeys(
+    'tab',
+    (e) => {
+      e.preventDefault();
+
+      // 只在 RadialView 中啟用
+      if (currentView !== 'radial') {
+        return;
+      }
+
+      if (!selectedNodeId) {
+        toast.error('請先選擇一個 Node');
+        return;
+      }
+
+      // 新增為選中 Node 的子節點
+      addNode({
+        label: '子節點',
+        parentId: selectedNodeId,
+      });
+
+      toast.success('已新增子節點');
     },
     {
       enabled,

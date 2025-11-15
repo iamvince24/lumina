@@ -5,22 +5,28 @@
 
 import dagre from 'dagre';
 import type { Node, Edge } from '@/types/mindmap';
+import type { LayoutDirection } from '@/types/view';
 
 /**
  * 計算 Radial 佈局
  *
  * @param nodes - 所有 Nodes
  * @param edges - 所有 Edges
+ * @param direction - 佈局方向（'TB': 上到下, 'LR': 左到右）
  * @returns 計算後的 Nodes（包含新的 position）
  */
-export function calculateRadialLayout(nodes: Node[], edges: Edge[]): Node[] {
+export function calculateRadialLayout(
+  nodes: Node[],
+  edges: Edge[],
+  direction: LayoutDirection = 'TB'
+): Node[] {
   // 建立 Dagre 圖
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   // 設定圖的方向和間距
   dagreGraph.setGraph({
-    rankdir: 'TB', // Top to Bottom
+    rankdir: direction, // 佈局方向：'TB' (Top to Bottom) 或 'LR' (Left to Right)
     nodesep: 100, // Node 之間的水平間距
     ranksep: 150, // 階層之間的垂直間距
   });
