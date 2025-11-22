@@ -93,44 +93,38 @@ export function RecentTopicsSidebar() {
   };
 
   return (
-    <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
-      <Card className="m-4 shadow-none border-none">
-        <CardHeader>
-          <CardTitle className="text-lg">最近的 Topics</CardTitle>
-        </CardHeader>
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 pb-4">
+        {/* 載入中狀態 */}
+        {isLoading && (
+          <div className="text-center text-gray-600 py-8">載入中...</div>
+        )}
 
-        <CardContent>
-          {/* 載入中狀態 */}
-          {isLoading && (
-            <div className="text-center text-gray-600 py-8">載入中...</div>
-          )}
+        {/* 沒有 Topics */}
+        {!isLoading && (!recentTopics || recentTopics.length === 0) && (
+          <div className="text-center text-gray-500 py-8">
+            <p className="mb-2">尚未建立任何 Topic</p>
+            <p className="text-sm">開始編輯心智圖時建立 Topic 吧！</p>
+          </div>
+        )}
 
-          {/* 沒有 Topics */}
-          {!isLoading && (!recentTopics || recentTopics.length === 0) && (
-            <div className="text-center text-gray-500 py-8">
-              <p className="mb-2">尚未建立任何 Topic</p>
-              <p className="text-sm">開始編輯心智圖時建立 Topic 吧！</p>
-            </div>
-          )}
-
-          {/* Topics 列表 */}
-          {!isLoading && recentTopics && recentTopics.length > 0 && (
-            <div className="space-y-3">
-              {recentTopics.map((topic) => (
-                <TopicItem
-                  key={topic.id}
-                  topicId={topic.id}
-                  name={topic.name}
-                  count={topic.nodeCount}
-                  lastUpdated={topic.lastUpdated}
-                  color={topic.color}
-                  onClick={() => handleTopicClick(topic.id)}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Topics 列表 */}
+        {!isLoading && recentTopics && recentTopics.length > 0 && (
+          <div className="space-y-3">
+            {recentTopics.map((topic) => (
+              <TopicItem
+                key={topic.id}
+                topicId={topic.id}
+                name={topic.name}
+                count={topic.nodeCount}
+                lastUpdated={topic.lastUpdated}
+                color={topic.color}
+                onClick={() => handleTopicClick(topic.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

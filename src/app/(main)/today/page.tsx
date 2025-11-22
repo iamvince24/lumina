@@ -58,14 +58,46 @@ export default function TodayPage() {
   }
 
   return (
-    <div className="flex h-screen">
-      {/* 主編輯區域 */}
-      <div className="flex-1">
-        <MindMapEditor mindmapId={mindmap?.id || 'today'} />
+    <div className="flex h-full gap-4">
+      {/* 左側欄：日期與最近筆記 */}
+      <div className="w-80 flex flex-col gap-4">
+        {/* 日期 Header */}
+        <div className="px-2">
+          <div className="text-4xl font-black text-gray-900">
+            {today.getFullYear()}
+          </div>
+          <div className="text-3xl font-black text-gray-900">
+            {today.getMonth() + 1}.{today.getDate()}{' '}
+            {today.toLocaleDateString('en-US', { weekday: 'short' })}.
+          </div>
+        </div>
+
+        {/* 最近的筆記 Card */}
+        <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-6 pb-2">
+            <h2 className="text-lg font-medium text-gray-700">最近的筆記</h2>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <RecentTopicsSidebar />
+          </div>
+        </div>
       </div>
 
-      {/* 右側邊欄：最近使用的 Topics */}
-      <RecentTopicsSidebar />
+      {/* 中間裝飾點點 */}
+      <div className="flex flex-col justify-center gap-8 py-20">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="w-2 h-2 rounded-full bg-gray-200" />
+        ))}
+      </div>
+
+      {/* 右側主編輯區域 Card */}
+      <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {/* Placeholder for Editor Label if needed, or just keep it clean as per design */}
+          {/* <span className="text-gray-400 font-medium">編輯器</span> */}
+        </div>
+        <MindMapEditor mindmapId={mindmap?.id || 'today'} />
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@
  */
 'use client';
 
+import { useRouter, usePathname } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 import { CommandPalette } from '@/components/CommandPalette';
 import { Onboarding } from '@/components/Onboarding';
@@ -92,6 +93,9 @@ export default function MainLayout({
     ? false // 簡化版本，實際應該檢查 user.createdAt
     : false;
 
+  const pathname = usePathname();
+  const isTodayPage = pathname === '/today';
+
   return (
     <>
       <div
@@ -104,7 +108,15 @@ export default function MainLayout({
         <Sidebar className="rounded-2xl border border-gray-200/60 shadow-sm bg-white/80 backdrop-blur-xl" />
 
         {/* 主內容區域 */}
-        <div className="flex-1 flex flex-col overflow-hidden rounded-2xl border border-gray-200/60 shadow-sm bg-white mt-[40px]">
+        <div
+          className={cn(
+            'flex-1 flex flex-col overflow-hidden rounded-2xl mt-[40px]',
+            // 如果是 Today 頁面，使用透明背景且無邊框
+            isTodayPage
+              ? 'bg-transparent'
+              : 'border border-gray-200/60 shadow-sm bg-white'
+          )}
+        >
           {/* Header */}
           {/* <Header /> */}
 
