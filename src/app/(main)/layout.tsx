@@ -80,12 +80,12 @@ export default function MainLayout({
         {/* 主內容區域 */}
         <div className="flex-1 flex flex-col overflow-hidden rounded-2xl border border-gray-200/60 shadow-sm bg-white">
           {/* Header */}
-          <Header />
+          {/* <Header /> */}
 
           {/* Tab 系統 - 使用 Suspense 包裹以優化載入 */}
-          <Suspense fallback={<div className="h-10 bg-gray-50" />}>
+          {/* <Suspense fallback={<div className="h-10 bg-gray-50" />}>
             <TabSystem />
-          </Suspense>
+          </Suspense> */}
 
           {/* 頁面內容 - 使用 Suspense 包裹以優化載入 */}
           <main className="flex-1 overflow-auto">
