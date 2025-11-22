@@ -5,8 +5,6 @@
 'use client';
 
 import { Suspense, useEffect } from 'react';
-import { TabSystem } from '@/components/TabSystem';
-import { Header } from '@/components/Header';
 import { CommandPalette } from '@/components/CommandPalette';
 import { Onboarding } from '@/components/Onboarding';
 import { Sidebar } from '@/components/Sidebar/Sidebar';

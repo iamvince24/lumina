@@ -19,7 +19,7 @@ export function withAuth(handler: AuthenticatedHandler) {
     { params }: { params: Record<string, string> }
   ) => {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       // 驗證 User Session
       const {
         data: { user },
