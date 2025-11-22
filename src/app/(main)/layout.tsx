@@ -28,17 +28,33 @@ export default function MainLayout({
   // 統一管理應用層級快捷鍵
   useAppShortcuts();
 
-  // 初始化假的使用者資料
+  // 初始化真實的 Supabase 使用者資料
   useEffect(() => {
+    const initAuth = async () => {
+      // 動態導入以避免 SSR 問題
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+
+      // 獲取當前 session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        setUser(
+          {
+            id: session.user.id,
+            email: session.user.email || null,
+            name:
+              session.user.user_metadata?.name || session.user.email || null,
+          },
+          session.access_token
+        );
+      }
+    };
+
     if (!user) {
-      setUser(
-        {
-          id: 'user-001',
-          email: 'demo@lumina.app',
-          name: '示範用戶',
-        },
-        'mock-token-12345'
-      );
+      initAuth();
     }
   }, [user, setUser]);
 

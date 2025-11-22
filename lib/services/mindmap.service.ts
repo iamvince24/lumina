@@ -13,8 +13,19 @@ export class MindMapService {
     const mindMap = await db.query.mindMaps.findFirst({
       where: and(eq(mindMaps.userId, userId), eq(mindMaps.date, date)),
       with: {
-        // 連同底下的 nodes 一起撈出來
-        nodes: true,
+        // 連同底下的 nodes 一起撈出來，包含所有關聯資料
+        nodes: {
+          with: {
+            // 獲取 node 關聯的 tags
+            tags: {
+              with: {
+                tag: true,
+              },
+            },
+            // 獲取 node 關聯的 topic
+            topic: true,
+          },
+        },
       },
     });
 

@@ -16,10 +16,11 @@ type AuthenticatedHandler = (
 export function withAuth(handler: AuthenticatedHandler) {
   return async (
     req: NextRequest,
-    { params }: { params: Record<string, string> }
+    context: { params: Promise<Record<string, string>> }
   ) => {
     try {
       const supabase = await createClient();
+
       // 驗證 User Session
       const {
         data: { user },
@@ -32,6 +33,9 @@ export function withAuth(handler: AuthenticatedHandler) {
           { status: 401 }
         );
       }
+
+      // Next.js 15: params 是 Promise，需要 await
+      const params = await context.params;
 
       // 驗證通過，將 user 注入並執行原本的 handler
       return await handler(req, { params, user });
