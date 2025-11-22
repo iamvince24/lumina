@@ -58,6 +58,15 @@
 }
 
 @layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .custom-scrollbar:hover {
+    scrollbar-color: #e5e7eb transparent;
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
     height: 4px;
@@ -68,8 +77,13 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
+    background: transparent;
     border-radius: 4px;
+    transition: background 1s ease;
+  }
+
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {

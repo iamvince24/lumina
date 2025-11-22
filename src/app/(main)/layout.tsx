@@ -10,6 +10,9 @@ import { Onboarding } from '@/components/Onboarding';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import { useAuthStore } from '@/stores/authStore';
 import { useTabStore } from '@/stores/tabStore';
+import { useSidebarStore } from '@/stores/sidebarStore';
+import { useAppShortcuts } from '@/hooks/useAppShortcuts';
+import { cn } from '@/utils';
 
 export default function MainLayout({
   children,
@@ -20,6 +23,10 @@ export default function MainLayout({
   const setUser = useAuthStore((state) => state.setUser);
   const addTab = useTabStore((state) => state.addTab);
   const tabs = useTabStore((state) => state.tabs);
+  const { isCollapsed } = useSidebarStore();
+
+  // 統一管理應用層級快捷鍵
+  useAppShortcuts();
 
   // 初始化假的使用者資料
   useEffect(() => {
@@ -71,12 +78,17 @@ export default function MainLayout({
 
   return (
     <>
-      <div className="flex h-screen bg-gray-100 p-3 gap-3">
+      <div
+        className={cn(
+          'flex h-screen bg-gray-100 p-3 overflow-hidden',
+          !isCollapsed && 'gap-3'
+        )}
+      >
         {/* 側邊欄 */}
-        <Sidebar className="h-full rounded-2xl border border-gray-200/60 shadow-sm bg-white/80 backdrop-blur-xl" />
+        <Sidebar className="rounded-2xl border border-gray-200/60 shadow-sm bg-white/80 backdrop-blur-xl" />
 
         {/* 主內容區域 */}
-        <div className="flex-1 flex flex-col overflow-hidden rounded-2xl border border-gray-200/60 shadow-sm bg-white">
+        <div className="flex-1 flex flex-col overflow-hidden rounded-2xl border border-gray-200/60 shadow-sm bg-white mt-[40px]">
           {/* Header */}
           {/* <Header /> */}
 
