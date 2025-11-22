@@ -19,8 +19,11 @@
       "@/stores/*": ["./src/stores/*"],
       "@/types/*": ["./src/types/*"],
       "@/utils/*": ["./src/utils/*"],
-      "@/hooks/*": ["./src/hooks/*"]
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/lib/supabase/*": ["./lib/supabase/*"]
     },
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"

@@ -1,8 +1,6 @@
 /**
  * 登入頁面
  * 路由: /login
- *
- * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
 
 'use client';
@@ -22,49 +20,17 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-// ⚠️ 暫時使用假資料 Hook，待後端 API 完成後替換為真實 API
-import { useMockSignIn } from '@/__mocks__/hooks';
-// import { api } from '@/utils/api';
-import { useAuthStore } from '@/stores/authStore';
+import { useSignIn } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setUser = useAuthStore((state) => state.setUser);
+  const { execute: signIn, loading, error: signInError } = useSignIn();
 
   // 表單狀態
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
-  // ⚠️ 暫時使用假資料 mutation，待後端 API 完成後替換為真實 API
-  const loginMutation = useMockSignIn({
-    onSuccess: (data) => {
-      // 儲存使用者資訊到 Store
-      setUser(data.user, data.token);
-
-      // 取得重導向 URL（如果有）
-      const redirectUrl = searchParams.get('redirect') || '/today';
-
-      // 重導向
-      router.push(redirectUrl);
-    },
-    onError: (error) => {
-      setError(error.message || '登入失敗，請檢查帳號密碼');
-    },
-  });
-
-  // ⚠️ 待後端 API 完成後，替換為真實 API
-  // const loginMutation = api.auth.signIn.useMutation({
-  //   onSuccess: (data) => {
-  //     setUser(data.user, data.token);
-  //     const redirectUrl = searchParams.get('redirect') || '/today';
-  //     router.push(redirectUrl);
-  //   },
-  //   onError: (error) => {
-  //     setError(error.message || '登入失敗，請檢查帳號密碼');
-  //   },
-  // });
 
   /**
    * 處理表單提交
@@ -84,8 +50,17 @@ export default function LoginPage() {
       return;
     }
 
-    // ⚠️ 暫時使用假資料 API，待後端 API 完成後替換為真實 API
-    loginMutation.mutate({ email, password });
+    // 執行登入
+    const success = await signIn(email, password);
+
+    if (success) {
+      // 取得重導向 URL（如果有）
+      const redirectUrl = searchParams.get('redirect') || '/today';
+      // 重導向
+      router.push(redirectUrl);
+    } else {
+      setError(signInError || '登入失敗，請檢查帳號密碼');
+    }
   };
 
   return (
@@ -113,7 +88,7 @@ export default function LoginPage() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loginMutation.isPending}
+                disabled={loading}
               />
             </div>
 
@@ -126,17 +101,13 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loginMutation.isPending}
+                disabled={loading}
               />
             </div>
 
             {/* 提交按鈕 */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loginMutation.isPending}
-            >
-              {loginMutation.isPending ? (
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   登入中...

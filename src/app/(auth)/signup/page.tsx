@@ -1,8 +1,6 @@
 /**
  * 註冊頁面
  * 路由: /signup
- *
- * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
 
 'use client';
@@ -22,14 +20,11 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-// ⚠️ 暫時使用假資料 Hook，待後端 API 完成後替換為真實 API
-import { useMockSignUp } from '@/__mocks__/hooks';
-// import { api } from '@/utils/api';
-import { useAuthStore } from '@/stores/authStore';
+import { useSignUp } from '@/hooks/useAuth';
 
 export default function SignUpPage() {
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
+  const { execute: signUp, loading, error: signUpError } = useSignUp();
 
   // 表單狀態
   const [name, setName] = useState('');
@@ -37,31 +32,6 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-
-  // ⚠️ 暫時使用假資料 mutation，待後端 API 完成後替換為真實 API
-  const signUpMutation = useMockSignUp({
-    onSuccess: (data) => {
-      // 儲存使用者資訊到 Store
-      setUser(data.user, data.token);
-
-      // 重導向到今天的編輯頁面
-      router.push('/today');
-    },
-    onError: (error) => {
-      setError(error.message || '註冊失敗，請稍後再試');
-    },
-  });
-
-  // ⚠️ 待後端 API 完成後，替換為真實 API
-  // const signUpMutation = api.auth.signUp.useMutation({
-  //   onSuccess: (data) => {
-  //     setUser(data.user, data.token);
-  //     router.push('/today');
-  //   },
-  //   onError: (error) => {
-  //     setError(error.message || '註冊失敗，請稍後再試');
-  //   },
-  // });
 
   /**
    * 密碼強度驗證
@@ -115,8 +85,15 @@ export default function SignUpPage() {
       return;
     }
 
-    // ⚠️ 暫時使用假資料 API，待後端 API 完成後替換為真實 API
-    signUpMutation.mutate({ name, email, password });
+    // 執行註冊
+    const success = await signUp(email, password, name);
+
+    if (success) {
+      // 重導向到今天的編輯頁面
+      router.push('/today');
+    } else {
+      setError(signUpError || '註冊失敗，請稍後再試');
+    }
   };
 
   return (
@@ -144,7 +121,7 @@ export default function SignUpPage() {
                 placeholder="你的名字"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={signUpMutation.isPending}
+                disabled={loading}
               />
             </div>
 
@@ -157,7 +134,7 @@ export default function SignUpPage() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={signUpMutation.isPending}
+                disabled={loading}
               />
             </div>
 
@@ -170,7 +147,7 @@ export default function SignUpPage() {
                 placeholder="至少 8 個字元"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={signUpMutation.isPending}
+                disabled={loading}
               />
               <p className="text-xs text-gray-500">需包含大小寫字母和數字</p>
             </div>
@@ -184,17 +161,13 @@ export default function SignUpPage() {
                 placeholder="再次輸入密碼"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={signUpMutation.isPending}
+                disabled={loading}
               />
             </div>
 
             {/* 提交按鈕 */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={signUpMutation.isPending}
-            >
-              {signUpMutation.isPending ? (
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   註冊中...

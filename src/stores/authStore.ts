@@ -7,8 +7,8 @@ import { persist } from 'zustand/middleware';
 
 interface User {
   id: string;
-  email: string;
-  name: string;
+  email: string | null;
+  name: string | null;
 }
 
 interface AuthState {

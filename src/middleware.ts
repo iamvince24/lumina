@@ -3,6 +3,7 @@
  * 處理路由保護和認證檢查
  */
 
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -22,18 +23,45 @@ const protectedRoutes = [
  */
 const authRoutes = ['/login', '/signup'];
 
-export function middleware(request: NextRequest) {
-  // 暫時禁用認證檢查，允許直接訪問所有頁面
-  // TODO: 完成應用程式功能開發後，重新啟用認證
-  return NextResponse.next();
-
-  /*
-  // 原始認證邏輯（已暫時禁用）
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 檢查是否有認證 token（從 cookie）
-  const token = request.cookies.get('lumina-auth')?.value;
-  const isAuthenticated = !!token;
+  // Create response object to handle cookie updates
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  // Create Supabase client for middleware
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // Get the session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const isAuthenticated = !!session;
 
   // 如果訪問需要認證的路由，但未登入
   if (
@@ -53,8 +81,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/today', request.url));
   }
 
-  return NextResponse.next();
-  */
+  return response;
 }
 
 export const config = {

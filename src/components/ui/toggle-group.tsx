@@ -8,7 +8,7 @@
 import * as React from 'react';
 import * as ToggleGroupPrimitive from '@radix-ui/react-toggle-group';
 import { type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 import { cva } from 'class-variance-authority';
 
 const toggleGroupVariants = cva(
@@ -37,7 +37,7 @@ const ToggleGroup = React.forwardRef<
   React.ElementRef<typeof ToggleGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> &
     VariantProps<typeof toggleGroupVariants>
->(({ className, variant, size, ...props }, ref) => (
+>(({ className, ...props }, ref) => (
   <ToggleGroupPrimitive.Root
     ref={ref}
     className={cn('flex items-center gap-1', className)}

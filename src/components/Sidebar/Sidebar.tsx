@@ -11,7 +11,7 @@ import { SidebarItem } from './SidebarItem';
 import { SidebarSection } from './SidebarSection';
 import { UserDropdown } from './UserDropdown';
 import { FolderTree } from './FolderTree';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 
 // Mock data for tags
 const mockTags = [

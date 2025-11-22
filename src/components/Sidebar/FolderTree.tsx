@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ChevronRight, Folder, FileText } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ChevronRight } from 'lucide-react';
+import { cn } from '@/utils';
 
 interface FileNode {
   id: string;

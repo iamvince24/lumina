@@ -1,6 +1,9 @@
 /**
  * Mock API Hooks
  * 模擬 tRPC hooks 的介面，方便未來切換到真實 API
+ *
+ * ⚠️ 注意：Auth 相關的 mock hooks (useMockSignIn, useMockSignUp, useMockSignOut)
+ * 已被棄用，請改用 @/hooks/useAuth 中的真實 hooks
  */
 
 import { useState, useEffect } from 'react';
@@ -20,6 +23,7 @@ import {
 import type { MockTopic, MockMindMap, MockTopicNodes } from './types';
 import type { Node, Edge } from '@/types/mindmap';
 import type { Tag } from '@/types/tag';
+import { UserSettings } from './settingsData';
 
 /**
  * 模擬 API 延遲
@@ -244,7 +248,8 @@ export function useMockUpdateMindMap(options?: {
 
 /**
  * Mock: 登入 API
- * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ * @deprecated 已棄用 - 請改用 @/hooks/useAuth 中的 useSignIn
+ * ⚠️ 此函數僅供舊代碼相容性使用，新代碼請使用真實的 Supabase Auth hooks
  */
 export function useMockSignIn(options?: {
   onSuccess?: (data: {
@@ -304,7 +309,8 @@ export function useMockSignIn(options?: {
 
 /**
  * Mock: 註冊 API
- * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ * @deprecated 已棄用 - 請改用 @/hooks/useAuth 中的 useSignUp
+ * ⚠️ 此函數僅供舊代碼相容性使用，新代碼請使用真實的 Supabase Auth hooks
  */
 export function useMockSignUp(options?: {
   onSuccess?: (data: {
@@ -365,7 +371,8 @@ export function useMockSignUp(options?: {
 
 /**
  * Mock: 登出 API
- * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
+ * @deprecated 已棄用 - 請改用 @/hooks/useAuth 中的 useSignOut
+ * ⚠️ 此函數僅供舊代碼相容性使用，新代碼請使用真實的 Supabase Auth hooks
  */
 export function useMockSignOut(options?: {
   onSuccess?: () => void;
@@ -653,8 +660,8 @@ export function useMockPermanentDeleteTopic(options?: {
  * Mock: 取得使用者設定
  * ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
  */
-export function useMockGetUserSettings(): UseQueryResult<any> {
-  const [data, setData] = useState<any | undefined>();
+export function useMockGetUserSettings(): UseQueryResult<UserSettings> {
+  const [data, setData] = useState<UserSettings | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -695,7 +702,7 @@ export function useMockUpdateUserSettings(options?: {
 }) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const mutate = async (params: any) => {
+  const mutate = async (params: UserSettings) => {
     setIsLoading(true);
     try {
       await mockDelay(300);
@@ -735,7 +742,19 @@ export function useMockGetCalendarEntries(params: {
     }
   >
 > {
-  const [data, setData] = useState<any | undefined>();
+  const [data, setData] = useState<
+    | Record<
+        string,
+        {
+          date: string;
+          hasContent: boolean;
+          nodeCount: number;
+          topicCount: number;
+          preview?: string;
+        }
+      >
+    | undefined
+  >();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -756,7 +775,16 @@ export function useMockGetCalendarEntries(params: {
             }
             return acc;
           },
-          {} as any
+          {} as Record<
+            string,
+            {
+              date: string;
+              hasContent: boolean;
+              nodeCount: number;
+              topicCount: number;
+              preview?: string;
+            }
+          >
         );
         setData(filteredEntries);
       } catch (e) {

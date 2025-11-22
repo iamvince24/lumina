@@ -5,7 +5,7 @@
 
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 import { Badge } from '@/components/ui/badge';
 import type { NodeData } from '@/types/mindmap';
 
