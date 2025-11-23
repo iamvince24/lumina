@@ -47,6 +47,12 @@ export function Hero() {
               </Button>
             </Link>
 
+            <Link href="/login">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                登入
+              </Button>
+            </Link>
+
             <Link href="/today">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
                 查看示範

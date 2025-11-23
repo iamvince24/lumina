@@ -68,7 +68,6 @@ export async function createTagAction(data: { name: string; color?: string }) {
     const newTag = await tagService.createTag(user.id, data);
 
     revalidatePath('/tags');
-    revalidatePath('/all-tags'); // In case old path is still used
     return { success: true, data: newTag };
   } catch (error) {
     console.error('Error creating tag:', error);
