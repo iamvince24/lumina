@@ -30,6 +30,10 @@ interface TagState {
 
   /** 清除篩選 */
   clearFilter: () => void;
+
+  /** 全域 Tag 選擇器狀態 */
+  isSelectorOpen: boolean;
+  setSelectorOpen: (isOpen: boolean) => void;
 }
 
 /**
@@ -63,11 +67,16 @@ export const useTagStore = create<TagState>()(
       setFilter: (filter) => set({ activeFilter: filter }),
 
       clearFilter: () => set({ activeFilter: null }),
+
+      isSelectorOpen: false,
+      setSelectorOpen: (isOpen) => set({ isSelectorOpen: isOpen }),
     }),
     {
       name: 'lumina-tags',
       partialize: (state) => ({
         tags: state.tags,
+        // Exclude isSelectorOpen and activeFilter from persistence if desired,
+        // but keeping tags persisted is good for offline/cache.
       }),
     }
   )

@@ -5,6 +5,7 @@
 
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useSidebarStore } from '@/stores/sidebarStore';
+import { useTagStore } from '@/stores/tagStore';
 
 /**
  * 應用層級快捷鍵配置
@@ -40,6 +41,25 @@ export function useAppShortcuts(config: AppShortcutsConfig = {}) {
       preventDefault: true,
     },
     [toggleSidebar]
+  );
+
+  /**
+   * ⌘ Shift T (Cmd/Ctrl + Shift + T): 開啟 Tag 選擇器
+   */
+  const { setSelectorOpen } = useTagStore();
+  useHotkeys(
+    'mod+shift+t',
+    (e) => {
+      e.preventDefault();
+      setSelectorOpen(true);
+    },
+    {
+      enabled,
+      enableOnFormTags: true, // 允許在輸入框中觸發
+      enableOnContentEditable: true, // 允許在編輯器中觸發
+      preventDefault: true,
+    },
+    [setSelectorOpen]
   );
 
   /**

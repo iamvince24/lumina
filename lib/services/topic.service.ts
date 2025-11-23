@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
-import { topics, nodes } from '@/lib/db/schema';
-import { eq, desc, and, isNull, sql } from 'drizzle-orm';
+import { topics, nodes, nodeTags, tags } from '@/lib/db/schema';
+import { eq, desc, and, isNull, sql, inArray } from 'drizzle-orm';
 import type { Topic } from '@/types/topic';
 
 export class TopicService {
@@ -90,8 +90,14 @@ export class TopicService {
    * 取得父 Topics（parentTopicId 為 null 且有子 topics）
    * 包含子 topics 和節點統計資訊
    * @param userId - 使用者 UUID
+   * @param options - 過濾選項
+   * @param options.onlyWithTags - 只返回有 tags 的 topics
+   * @param options.tagId - 只返回包含特定 tag 的 topics
    */
-  async getParentTopicsWithChildren(userId: string) {
+  async getParentTopicsWithChildren(
+    userId: string,
+    options?: { onlyWithTags?: boolean; tagId?: string }
+  ) {
     // 1. 獲取所有根層級的 topics（parentTopicId 為 null）
     const parentTopics = await db
       .select({
@@ -141,6 +147,42 @@ export class TopicService {
 
         const accumulationCount = nodeCountResult[0]?.count || 0;
 
+        // 獲取該主題下所有 nodes 的 tags（包含父主題和子主題的 nodes）
+        const topicNodes = await db
+          .select({ id: nodes.id })
+          .from(nodes)
+          .where(
+            sql`${nodes.topicId} IN (${sql.join(
+              topicIds.map((id) => sql`${id}`),
+              sql`, `
+            )})`
+          );
+
+        const nodeIds = topicNodes.map((node) => node.id);
+        const topicTags: Array<{ id: string; name: string; color: string }> =
+          [];
+
+        if (nodeIds.length > 0) {
+          const tagsResult = await db
+            .select({
+              id: tags.id,
+              name: tags.name,
+              color: tags.color,
+            })
+            .from(tags)
+            .innerJoin(nodeTags, eq(tags.id, nodeTags.tagId))
+            .where(inArray(nodeTags.nodeId, nodeIds))
+            .groupBy(tags.id, tags.name, tags.color);
+
+          topicTags.push(
+            ...tagsResult.map((tag) => ({
+              id: tag.id,
+              name: tag.name,
+              color: tag.color ?? '#6B7280',
+            }))
+          );
+        }
+
         return {
           ...parentTopic,
           parentTopicId: parentTopic.parentTopicId ?? undefined,
@@ -150,12 +192,28 @@ export class TopicService {
             name: child.name,
             color: child.color,
           })),
+          tags: topicTags,
         };
       })
     );
 
     // 3. 只返回有子 topics 的父 topics
-    return result.filter((topic) => topic.childTopics.length > 0);
+    let filteredResult = result.filter((topic) => topic.childTopics.length > 0);
+
+    // 4. 根據選項進行額外過濾
+    if (options?.onlyWithTags) {
+      filteredResult = filteredResult.filter(
+        (topic) => topic.tags && topic.tags.length > 0
+      );
+    }
+
+    if (options?.tagId) {
+      filteredResult = filteredResult.filter((topic) =>
+        topic.tags.some((tag) => tag.id === options.tagId)
+      );
+    }
+
+    return filteredResult;
   }
 }
 

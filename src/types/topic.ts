@@ -110,9 +110,26 @@ export interface ChildTopic {
 }
 
 /**
+ * Topic 的標籤資訊（簡化版）
+ */
+export interface TopicTag {
+  /** Tag ID */
+  id: string;
+
+  /** Tag 名稱 */
+  name: string;
+
+  /** Tag 顏色 */
+  color: string;
+}
+
+/**
  * 父 Topic（包含子 topics）
  */
 export interface ParentTopicWithChildren extends Topic {
   /** 子 Topics */
   childTopics: ChildTopic[];
+
+  /** 該主題下所有 nodes 的標籤（去重） */
+  tags: TopicTag[];
 }

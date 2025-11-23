@@ -56,8 +56,16 @@ export function useRegularTopics() {
 /**
  * 從 API 獲取父 topics（包含子 topics）
  */
-async function fetchParentTopics(): Promise<ParentTopicWithChildren[]> {
-  const response = await fetch('/api/topics/parent-topics');
+async function fetchParentTopics(options?: {
+  onlyWithTags?: boolean;
+  tagId?: string;
+}): Promise<ParentTopicWithChildren[]> {
+  const params = new URLSearchParams();
+  if (options?.onlyWithTags) params.append('withTags', 'true');
+  if (options?.tagId) params.append('tagId', options.tagId);
+
+  const url = `/api/topics/parent-topics${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error('Failed to fetch parent topics');
@@ -75,11 +83,17 @@ async function fetchParentTopics(): Promise<ParentTopicWithChildren[]> {
 
 /**
  * React Query hook - 取得父 topics（parentTopicId 為 null 且有子 topics）
+ * @param options - 過濾選項
+ * @param options.onlyWithTags - 只返回有 tags 的 topics
+ * @param options.tagId - 只返回包含特定 tag 的 topics
  */
-export function useParentTopics() {
+export function useParentTopics(options?: {
+  onlyWithTags?: boolean;
+  tagId?: string;
+}) {
   return useQuery({
-    queryKey: ['topics', 'parent-topics'],
-    queryFn: fetchParentTopics,
+    queryKey: ['topics', 'parent-topics', options],
+    queryFn: () => fetchParentTopics(options),
     staleTime: 5 * 60 * 1000, // 5 分鐘
   });
 }

@@ -20,6 +20,9 @@ export interface Tag {
 
   /** 使用次數 */
   usageCount: number;
+
+  /** 使用者 ID */
+  userId: string;
 }
 
 /**

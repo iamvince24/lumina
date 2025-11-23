@@ -4,9 +4,10 @@
  */
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 import { CommandPalette } from '@/components/CommandPalette';
+import { TagSelector } from '@/components/TagSystem/TagSelector';
 import { Onboarding } from '@/components/Onboarding';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import { useAuthStore } from '@/stores/authStore';
@@ -141,6 +142,9 @@ export default function MainLayout({
 
         {/* 命令面板（全域） */}
         <CommandPalette />
+
+        {/* Tag 選擇器（全域） */}
+        <TagSelector />
       </div>
 
       {/* Onboarding */}

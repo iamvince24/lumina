@@ -6,11 +6,23 @@ import { topicService } from '@/lib/services/topic.service';
  * GET /api/topics/parent-topics
  * 取得父 Topics（parentTopicId 為 null 且有子 topics）
  * 返回包含子 topics 和節點統計的資料
+ *
+ * Query Parameters:
+ * - withTags: 'true' to only return topics that have at least one tag
+ * - tagId: filter topics that contain this specific tag ID
  */
 export const GET = withAuth(async (req: NextRequest, { user }) => {
   try {
+    const { searchParams } = new URL(req.url);
+    const onlyWithTags = searchParams.get('withTags') === 'true';
+    const tagId = searchParams.get('tagId');
+
     const parentTopics = await topicService.getParentTopicsWithChildren(
-      user.id
+      user.id,
+      {
+        onlyWithTags,
+        tagId: tagId || undefined,
+      }
     );
 
     return NextResponse.json({

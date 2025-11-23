@@ -36,7 +36,8 @@ export function Sidebar({ className }: { className?: string }) {
       href === '/today' ||
       href === '/calendar' ||
       href === '/topics' ||
-      href === '/all-tags'
+      href === '/topics' ||
+      href === '/tags'
     ) {
       return pathname === href;
     }
@@ -117,8 +118,8 @@ export function Sidebar({ className }: { className?: string }) {
                 <SidebarItem
                   icon={Tag}
                   label="All Tags"
-                  href="/all-tags"
-                  isActive={isActive('/all-tags')}
+                  href="/tags"
+                  isActive={isActive('/tags')}
                 />
               </div>
 
