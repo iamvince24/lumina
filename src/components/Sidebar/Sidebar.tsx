@@ -8,6 +8,7 @@ import {
   Tag,
   PanelLeftClose,
 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { SidebarItem } from './SidebarItem';
 import { SidebarSection } from './SidebarSection';
 import { UserDropdown } from './UserDropdown';
@@ -19,6 +20,7 @@ import { useSidebarStore } from '@/stores/sidebarStore';
 import { useAuthStore } from '@/stores/authStore';
 
 export function Sidebar({ className }: { className?: string }) {
+  const pathname = usePathname();
   const { data: pinnedTopics = [], isLoading: isPinnedLoading } =
     usePinnedTopics();
   const { data: regularTopics = [], isLoading: isRegularLoading } =
@@ -26,6 +28,24 @@ export function Sidebar({ className }: { className?: string }) {
   const { data: tags = [], isLoading: isTagsLoading } = useTags();
   const { isCollapsed, toggleSidebar } = useSidebarStore();
   const user = useAuthStore((state) => state.user);
+
+  const isActive = (href: string) => {
+    if (!href) return false;
+    // 精確匹配主要導航項目
+    if (
+      href === '/today' ||
+      href === '/calendar' ||
+      href === '/topics' ||
+      href === '/all-tags'
+    ) {
+      return pathname === href;
+    }
+    // 動態路由匹配 (topic 和 tag)
+    if (href.startsWith('/topic/') || href.startsWith('/tag/')) {
+      return pathname === href;
+    }
+    return false;
+  };
 
   return (
     <>
@@ -76,14 +96,30 @@ export function Sidebar({ className }: { className?: string }) {
             <div className="flex-1 overflow-y-auto px-3 pb-4 custom-scrollbar">
               {/* Main Navigation */}
               <div className="mb-6 space-y-0.5">
-                <SidebarItem icon={Home} label="Today" href="/today" isActive />
+                <SidebarItem
+                  icon={Home}
+                  label="Today"
+                  href="/today"
+                  isActive={isActive('/today')}
+                />
                 <SidebarItem
                   icon={Calendar}
                   label="Calendar"
                   href="/calendar"
+                  isActive={isActive('/calendar')}
                 />
-                <SidebarItem icon={Folder} label="All Topics" href="/topics" />
-                <SidebarItem icon={Tag} label="All Tags" href="/all-tags" />
+                <SidebarItem
+                  icon={Folder}
+                  label="All Topics"
+                  href="/topics"
+                  isActive={isActive('/topics')}
+                />
+                <SidebarItem
+                  icon={Tag}
+                  label="All Tags"
+                  href="/all-tags"
+                  isActive={isActive('/all-tags')}
+                />
               </div>
 
               {/* Pinned Section */}
@@ -108,6 +144,7 @@ export function Sidebar({ className }: { className?: string }) {
                       icon={Book}
                       label={topic.name}
                       href={`/topic/${topic.id}`}
+                      isActive={isActive(`/topic/${topic.id}`)}
                     />
                   ))}
                 </SidebarSection>
@@ -135,6 +172,7 @@ export function Sidebar({ className }: { className?: string }) {
                       icon={Book}
                       label={topic.name}
                       href={`/topic/${topic.id}`}
+                      isActive={isActive(`/topic/${topic.id}`)}
                     />
                   ))}
                 </SidebarSection>
@@ -161,6 +199,7 @@ export function Sidebar({ className }: { className?: string }) {
                       key={tag.id}
                       label={tag.name}
                       href={`/tag/${tag.id}`}
+                      isActive={isActive(`/tag/${tag.id}`)}
                       rightElement={
                         tag.usageCount > 0 ? (
                           <span className="text-gray-500">
