@@ -8,6 +8,7 @@
 import { useEffect } from 'react';
 import { MindMapEditor } from '@/components/MindMapEditor';
 import { RecentTopicsSidebar } from '@/components/TopicSystem/RecentTopicsSidebar';
+import { DecoratorDots } from '@/components/DecoratorDots';
 import { useMindMapByDate } from '@/hooks/useMindmap';
 import { useTabStore } from '@/stores/tabStore';
 import { useMindMapStore } from '@/stores/mindmapStore';
@@ -84,11 +85,7 @@ export default function TodayPage() {
       </div>
 
       {/* 中間裝飾點點 */}
-      <div className="flex flex-col justify-center gap-8 py-20">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="w-2 h-2 rounded-full bg-gray-200" />
-        ))}
-      </div>
+      <DecoratorDots />
 
       {/* 右側主編輯區域 Card */}
       <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">

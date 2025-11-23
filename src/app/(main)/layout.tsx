@@ -126,7 +126,7 @@ export default function MainLayout({
           </Suspense> */}
 
           {/* 頁面內容 - 使用 Suspense 包裹以優化載入 */}
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1">
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-full">

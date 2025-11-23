@@ -8,10 +8,10 @@
 import { useState, useMemo } from 'react';
 import { Calendar } from './Calendar';
 import { DayCard } from './DayCard';
+import { DecoratorDots } from '@/components/DecoratorDots';
 import { useTab } from '@/hooks/useTab';
 import type { MindMap } from '@/types/mindmap';
-// ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
-import { useMockGetCalendarEntries } from '@/__mocks__/hooks';
+import { useCalendarEntries } from '@/hooks/useCalendar';
 
 /**
  * 月曆視圖組件
@@ -25,11 +25,11 @@ export function CalendarView() {
   // 選中的日期
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // ⚠️ 目前使用假資料 Hook，待後端 API 完成後需替換為真實 API
-  const { data: calendarEntries, isLoading } = useMockGetCalendarEntries({
-    year: currentMonth.getFullYear(),
-    month: currentMonth.getMonth() + 1,
-  });
+  // 獲取月曆資料
+  const { data: calendarEntries, isLoading } = useCalendarEntries(
+    currentMonth.getFullYear(),
+    currentMonth.getMonth() + 1
+  );
 
   /**
    * 取得有輸出的日期列表
@@ -100,9 +100,9 @@ export function CalendarView() {
   }
 
   return (
-    <div className="w-full h-screen flex bg-gray-50">
+    <div className="w-full h-screen flex bg-gray-50 gap-4">
       {/* 左側：月曆 */}
-      <div className="w-2/5 border-r border-gray-200">
+      <div className="w-80 border-r border-gray-200 ">
         <Calendar
           currentDate={currentMonth}
           datesWithOutput={datesWithOutput}
@@ -111,6 +111,9 @@ export function CalendarView() {
           onMonthChange={setCurrentMonth}
         />
       </div>
+
+      {/* 中間裝飾點點 */}
+      <DecoratorDots />
 
       {/* 右側：每日小卡 */}
       <div className="flex-1 p-6 overflow-y-auto">

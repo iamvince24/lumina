@@ -134,7 +134,7 @@ export function Calendar({
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white">
+    <div className="w-full flex flex-col bg-white">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -143,11 +143,12 @@ export function Calendar({
             size="sm"
             onClick={goToPreviousMonth}
             aria-label="上個月"
+            className="h-8 w-8 p-0"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
 
-          <h2 className="text-lg font-semibold text-gray-800 min-w-[150px] text-center">
+          <h2 className="text-base font-semibold text-gray-800 min-w-[120px] text-center">
             {currentDate.getFullYear()} 年 {currentDate.getMonth() + 1} 月
           </h2>
 
@@ -156,22 +157,28 @@ export function Calendar({
             size="sm"
             onClick={goToNextMonth}
             aria-label="下個月"
+            className="h-8 w-8 p-0"
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
 
-        <Button variant="outline" size="sm" onClick={goToToday}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={goToToday}
+          className="text-sm"
+        >
           今天
         </Button>
       </div>
 
       {/* 星期標題 */}
-      <div className="grid grid-cols-7 border-b border-gray-200">
+      <div className="grid grid-cols-7 mb-2 mt-2">
         {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
           <div
             key={day}
-            className="py-2 text-center text-sm font-medium text-gray-600"
+            className="py-1 text-center text-xs font-medium text-gray-500"
           >
             {day}
           </div>
@@ -179,10 +186,13 @@ export function Calendar({
       </div>
 
       {/* 日期網格 */}
-      <div className="flex-1 grid grid-cols-7 gap-px bg-gray-200">
+      <div className="grid grid-cols-7 gap-1 px-2 pb-2">
         {calendarData.map((date, index) => {
           const dateStr = formatDate(date);
           const editorUrl = `/editor/${dateStr}`;
+          const isSelectedDate = isSelected(date);
+          const isTodayDate = isToday(date);
+          const isCurrentMonthDate = isCurrentMonth(date);
 
           return (
             <Link
@@ -190,34 +200,35 @@ export function Calendar({
               href={editorUrl}
               prefetch={true}
               onClick={(e) => {
-                // 阻止預設導航行為，只執行日期選擇（用於顯示卡片）
                 e.preventDefault();
                 onDateSelect(date);
               }}
               className={cn(
-                'bg-white p-2 hover:bg-gray-50 transition-colors relative block',
-                !isCurrentMonth(date) && 'text-gray-400',
-                isSelected(date) && 'bg-blue-50 border-2 border-blue-500'
+                'aspect-square flex flex-col items-center justify-center relative rounded-full transition-colors',
+                !isCurrentMonthDate && 'text-gray-300',
+                isSelectedDate && 'bg-blue-100 text-blue-700 font-semibold',
+                !isSelectedDate && isCurrentMonthDate && 'hover:bg-gray-100',
+                isTodayDate && !isSelectedDate && 'text-blue-600 font-bold'
               )}
               aria-label={`選擇日期 ${dateStr}`}
               tabIndex={0}
             >
               {/* 日期數字 */}
-              <div
-                className={cn(
-                  'text-sm font-medium',
-                  isToday(date) &&
-                    'w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 text-white mx-auto'
-                )}
-              >
-                {date.getDate()}
-              </div>
+              <span className="text-sm z-10">{date.getDate()}</span>
 
-              {/* 輸出標記 */}
+              {/* 輸出標記 (小圓點) */}
               {hasOutput(date) && (
-                <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                  <div className="w-1 h-1 bg-blue-500 rounded-full" />
-                </div>
+                <div
+                  className={cn(
+                    'w-1 h-1 rounded-full mt-0.5',
+                    isSelectedDate ? 'bg-blue-500' : 'bg-blue-400'
+                  )}
+                />
+              )}
+
+              {/* 今天的外框標記 (如果是今天但沒被選中) */}
+              {isTodayDate && !isSelectedDate && (
+                <div className="absolute inset-0 border border-blue-200 rounded-full" />
               )}
             </Link>
           );
