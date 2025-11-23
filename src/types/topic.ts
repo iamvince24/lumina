@@ -90,3 +90,29 @@ export interface TopicStats {
   /** 第一次建立日期 */
   firstCreated: Date;
 }
+
+// ========================================
+// 父 Topic 相關型別
+// ========================================
+
+/**
+ * 子 Topic 的簡化資訊
+ */
+export interface ChildTopic {
+  /** Topic ID */
+  id: string;
+
+  /** Topic 名稱 */
+  name: string;
+
+  /** Topic 顏色 */
+  color: string;
+}
+
+/**
+ * 父 Topic（包含子 topics）
+ */
+export interface ParentTopicWithChildren extends Topic {
+  /** 子 Topics */
+  childTopics: ChildTopic[];
+}
