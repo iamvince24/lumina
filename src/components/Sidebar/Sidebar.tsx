@@ -42,7 +42,7 @@ export function Sidebar({ className }: { className?: string }) {
       return pathname === href;
     }
     // 動態路由匹配 (topic 和 tag)
-    if (href.startsWith('/topic/') || href.startsWith('/tag/')) {
+    if (href.startsWith('/topics/') || href.startsWith('/tag/')) {
       return pathname === href;
     }
     return false;
@@ -144,8 +144,8 @@ export function Sidebar({ className }: { className?: string }) {
                       key={topic.id}
                       icon={Book}
                       label={topic.name}
-                      href={`/topic/${topic.id}`}
-                      isActive={isActive(`/topic/${topic.id}`)}
+                      href={`/topics/${topic.id}`}
+                      isActive={isActive(`/topics/${topic.id}`)}
                     />
                   ))}
                 </SidebarSection>
@@ -172,8 +172,8 @@ export function Sidebar({ className }: { className?: string }) {
                       key={topic.id}
                       icon={Book}
                       label={topic.name}
-                      href={`/topic/${topic.id}`}
-                      isActive={isActive(`/topic/${topic.id}`)}
+                      href={`/topics/${topic.id}`}
+                      isActive={isActive(`/topics/${topic.id}`)}
                     />
                   ))}
                 </SidebarSection>
