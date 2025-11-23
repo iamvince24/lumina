@@ -59,6 +59,14 @@ export class MindMapService {
             content: true,
             isTopic: true,
           },
+          with: {
+            // 獲取 node 關聯的 tags
+            tags: {
+              with: {
+                tag: true,
+              },
+            },
+          },
         },
       },
     });

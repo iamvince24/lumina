@@ -5,25 +5,30 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Calendar } from './Calendar';
-import { DayCard } from './DayCard';
 import { DecoratorDots } from '@/components/DecoratorDots';
-import { useTab } from '@/hooks/useTab';
-import type { MindMap } from '@/types/mindmap';
 import { useCalendarEntries } from '@/hooks/useCalendar';
+import { NoteCardsView, type ViewMode } from './NoteCardsView';
+import { List, Grid, LayoutGrid } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/utils';
 
 /**
  * 月曆視圖組件
  */
 export function CalendarView() {
-  const { openEditorTab } = useTab();
-
   // 當前月份
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  // 選中的日期
+  // 選中的日期（用於月曆高亮顯示）
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // 視圖模式
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // 滾動容器 ref
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // 獲取月曆資料
   const { data: calendarEntries, isLoading } = useCalendarEntries(
@@ -42,51 +47,68 @@ export function CalendarView() {
   }, [calendarEntries]);
 
   /**
-   * 取得選中日期的資料
+   * 取得當月有內容的卡片數據
    */
-  const selectedDayData = useMemo(() => {
-    if (!selectedDate || !calendarEntries) return null;
+  const cardsData = useMemo(() => {
+    if (!calendarEntries) return [];
 
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    return calendarEntries[dateStr] || null;
-  }, [selectedDate, calendarEntries]);
+    return Object.values(calendarEntries)
+      .filter((entry) => entry.hasContent)
+      .map((entry) => ({
+        date: entry.date,
+        tags: entry.tags || [],
+        topics: entry.topics || [],
+      }));
+  }, [calendarEntries]);
 
   /**
-   * 將 calendar entry 轉換為 MindMap 格式（用於顯示）
-   */
-  const selectedMindMap = useMemo(() => {
-    if (!selectedDayData || !selectedDate) return null;
-
-    // 轉換為 MindMap 格式以相容現有的 DayCard 組件
-    return {
-      id: `mindmap-${selectedDayData.date}`,
-      date: selectedDate,
-      title: `心智圖 ${selectedDate.toLocaleDateString('zh-TW')}`,
-      nodes: [], // 假資料中不包含詳細節點
-      edges: [],
-      createdAt: selectedDate,
-      updatedAt: selectedDate,
-      userId: 'user-1',
-    } as MindMap;
-  }, [selectedDayData, selectedDate]);
-
-  /**
-   * 處理日期選擇
+   * 處理日期選擇（用於月曆高亮）
    */
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
   };
 
   /**
-   * 處理卡片點擊
-   * 使用 Tab 系統開啟該日期的編輯頁面
+   * 格式化日期為 YYYY-MM-DD（使用本地時區）
    */
-  const handleCardClick = () => {
-    if (!selectedDate) return;
-
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    openEditorTab(dateStr);
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
+
+  /**
+   * 當選中日期改變時，滾動到對應的卡片
+   */
+  useEffect(() => {
+    if (!selectedDate || !scrollContainerRef.current) return;
+
+    const dateStr = formatDateLocal(selectedDate);
+    const cardElement = document.getElementById(`card-${dateStr}`);
+
+    if (cardElement && scrollContainerRef.current) {
+      // 使用 setTimeout 確保 DOM 已更新
+      setTimeout(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        // 計算卡片相對於滾動容器的位置
+        const containerRect = container.getBoundingClientRect();
+        const cardRect = cardElement.getBoundingClientRect();
+
+        // 計算需要滾動的距離（卡片頂部到容器頂部的距離）
+        const scrollTop =
+          container.scrollTop + (cardRect.top - containerRect.top);
+
+        // 使用 scrollTo 滾動，只影響滾動容器本身
+        container.scrollTo({
+          top: scrollTop - 24, // 減去一些 padding，讓卡片不會貼邊
+          behavior: 'smooth',
+        });
+      }, 100);
+    }
+  }, [selectedDate]);
 
   if (isLoading) {
     return (
@@ -116,62 +138,72 @@ export function CalendarView() {
       <DecoratorDots />
 
       {/* 右側：每日小卡 */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        {selectedDate ? (
-          selectedDayData ? (
-            <div className="space-y-4">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-2xl font-bold mb-4">
-                  {selectedDate.toLocaleDateString('zh-TW', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </h2>
-
-                <div className="space-y-4">
-                  <div className="flex gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">節點數量:</span>
-                      <span>{selectedDayData.nodeCount}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">主題數量:</span>
-                      <span>{selectedDayData.topicCount}</span>
-                    </div>
-                  </div>
-
-                  {selectedDayData.preview && (
-                    <div className="border-l-4 border-blue-600 pl-4 py-2">
-                      <p className="text-gray-700">{selectedDayData.preview}</p>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleCardClick}
-                    className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    開啟編輯器
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <p className="text-lg">此日期沒有內容</p>
-              <button
-                onClick={handleCardClick}
-                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
-              >
-                建立新內容
-              </button>
-            </div>
-          )
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <p className="text-lg">請選擇一個日期</p>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* 視圖切換工具列 */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800">
+            {currentMonth.getFullYear()} 年 {currentMonth.getMonth() + 1} 月
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              aria-label="列表視圖"
+              className={cn(
+                'h-8 w-8 p-0 transition-all duration-200',
+                'hover:scale-110 active:scale-95',
+                viewMode === 'list'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+                  : 'hover:bg-gray-100 active:bg-gray-200'
+              )}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              aria-label="網格視圖"
+              className={cn(
+                'h-8 w-8 p-0 transition-all duration-200',
+                'hover:scale-110 active:scale-95',
+                viewMode === 'grid'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+                  : 'hover:bg-gray-100 active:bg-gray-200'
+              )}
+            >
+              <Grid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'waterfall' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('waterfall')}
+              aria-label="瀑布流視圖"
+              className={cn(
+                'h-8 w-8 p-0 transition-all duration-200',
+                'hover:scale-110 active:scale-95',
+                viewMode === 'waterfall'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+                  : 'hover:bg-gray-100 active:bg-gray-200'
+              )}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
           </div>
-        )}
+        </div>
+
+        {/* 卡片視圖區域 */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 p-6 overflow-y-auto min-h-0 h-full"
+        >
+          <NoteCardsView
+            viewMode={viewMode}
+            cards={cardsData}
+            selectedDate={selectedDate}
+          />
+        </div>
       </div>
     </div>
   );

@@ -6,6 +6,8 @@ interface CalendarEntry {
   nodeCount: number;
   topicCount: number;
   preview: string;
+  tags: string[];
+  topics: string[];
 }
 
 interface CalendarResponse {

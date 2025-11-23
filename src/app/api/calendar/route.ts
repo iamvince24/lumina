@@ -40,12 +40,33 @@ export const GET = withAuth(async (req, { user }) => {
           mindMap.nodes.find((n) => !n.isTopic) || mindMap.nodes[0];
         const preview = firstContentNode?.content || '';
 
+        // 收集所有唯一的 tags（從所有 nodes 的 tags 中）
+        const tagSet = new Set<string>();
+        mindMap.nodes.forEach((node) => {
+          if (node.tags) {
+            node.tags.forEach((nodeTag) => {
+              if (nodeTag.tag) {
+                tagSet.add(nodeTag.tag.name);
+              }
+            });
+          }
+        });
+        const tags = Array.from(tagSet);
+
+        // 收集所有非 topic 的 nodes 的 content（作為主題列表）
+        const topics = mindMap.nodes
+          .filter((n) => !n.isTopic)
+          .map((n) => n.content)
+          .filter((content) => content.trim().length > 0);
+
         acc[dateStr] = {
           date: dateStr,
           hasContent: true,
           nodeCount,
           topicCount,
           preview,
+          tags,
+          topics,
         };
         return acc;
       },
@@ -57,6 +78,8 @@ export const GET = withAuth(async (req, { user }) => {
           nodeCount: number;
           topicCount: number;
           preview: string;
+          tags: string[];
+          topics: string[];
         }
       >
     );
