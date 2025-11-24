@@ -89,3 +89,4 @@ temp/
 
 # Doc
 docs/
+.cursor/

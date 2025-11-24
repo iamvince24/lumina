@@ -20,12 +20,16 @@ import 'reactflow/dist/style.css';
 import { Plus } from 'lucide-react';
 
 import { CustomNode } from './CustomNode';
+import { CenterNode } from './CenterNode';
+import { TopicNode } from './TopicNode';
+import { MindMapEdge } from './MindMapEdge';
 import { DirectionToggle } from '../LogicChartView/DirectionToggle';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import { useViewModeStore } from '@/stores/viewModeStore';
-import { calculateRadialLayout } from '@/utils/layoutAlgorithms/radial';
+import { calculateHorizontalMindMapLayout } from '@/utils/layoutAlgorithms/horizontalMindMap';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { Node, Edge } from '@/types/mindmap';
+import './mindMapStyles.css';
 
 /**
  * Node 類型對應表
@@ -33,7 +37,16 @@ import type { Node, Edge } from '@/types/mindmap';
  */
 const nodeTypes = {
   custom: CustomNode,
-  topic: CustomNode,
+  topic: TopicNode,
+  center: CenterNode,
+};
+
+/**
+ * Edge 類型對應表
+ * 自定義邊類型
+ */
+const edgeTypes = {
+  mindmap: MindMapEdge,
 };
 
 /**
@@ -160,17 +173,16 @@ export function RadialView() {
 
   /**
    * 自動佈局
-   * 使用 Dagre 演算法計算 Node 位置
+   * 使用水平思維導圖演算法計算 Node 位置
    */
   const handleAutoLayout = useCallback(() => {
-    const layoutedNodes = calculateRadialLayout(
+    const layoutedNodes = calculateHorizontalMindMapLayout(
       nodes as Node[],
-      edges as Edge[],
-      layoutDirection
+      edges as Edge[]
     );
     setNodes(layoutedNodes);
     updateNodes(layoutedNodes);
-  }, [nodes, edges, layoutDirection, setNodes, updateNodes]);
+  }, [nodes, edges, setNodes, updateNodes]);
 
   /**
    * 新增節點
@@ -178,23 +190,26 @@ export function RadialView() {
    */
   const handleAddNode = useCallback(() => {
     if (nodes.length === 0) {
-      // 新增第一個根節點
+      // 新增第一個中心節點
       addNode({
         label: '中心主題',
         isTopic: true,
-        position: { x: 250, y: 250 },
+        nodeType: 'center',
+        position: { x: 100, y: 300 },
       });
     } else if (selectedNodeIds.length > 0) {
       // 新增子節點到選中的節點
       addNode({
-        label: '新節點',
+        label: '新主題',
         parentId: selectedNodeIds[0],
+        nodeType: 'topic',
       });
     } else {
-      // 沒有選中節點，新增根節點
+      // 沒有選中節點，新增主題節點
       addNode({
         label: '新主題',
         isTopic: true,
+        nodeType: 'topic',
       });
     }
   }, [nodes.length, selectedNodeIds, addNode]);
@@ -264,9 +279,15 @@ export function RadialView() {
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={{
+          type: 'mindmap',
+          animated: false,
+        }}
         proOptions={proOptions}
         fitView
         attributionPosition="bottom-left"
+        className="mindmap-view"
       >
         {/* 背景網格 */}
         <Background />

@@ -53,7 +53,7 @@ export interface Node {
   id: string;
 
   /** Node 類型 */
-  type: 'custom' | 'topic';
+  type: 'custom' | 'topic' | 'center';
 
   /** Node 在畫布上的位置 */
   position: Position;
@@ -148,6 +148,9 @@ export interface AddNodeParams {
 
   /** 是否為 Topic */
   isTopic?: boolean;
+
+  /** Node 類型（可選，優先於 isTopic） */
+  nodeType?: 'custom' | 'topic' | 'center';
 }
 
 /**

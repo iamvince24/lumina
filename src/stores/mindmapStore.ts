@@ -106,10 +106,14 @@ export const useMindMapStore = create<MindMapStore>()(
           y: Math.random() * 500,
         };
 
+        // 決定 Node 類型（優先使用 nodeType，否則根據 isTopic）
+        const nodeType =
+          params.nodeType || (params.isTopic ? 'topic' : 'custom');
+
         // 建立新 Node
         const newNode: Node = {
           id: nodeId,
-          type: params.isTopic ? 'topic' : 'custom',
+          type: nodeType,
           position,
           data: {
             label: params.label,

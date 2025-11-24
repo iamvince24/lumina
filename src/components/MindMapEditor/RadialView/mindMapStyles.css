@@ -1,0 +1,138 @@
+/**
+ * MindMap Styles
+ * MindMeister 風格的心智圖樣式
+ */
+
+/* React Flow 畫布背景 */
+.react-flow.mindmap-view {
+  background-color: #f8f9fa;
+}
+
+/* 節點動畫 */
+.react-flow__node {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.react-flow__node:hover {
+  transform: scale(1.02);
+}
+
+.react-flow__node.selected {
+  z-index: 10;
+}
+
+/* Handle 樣式優化 */
+.react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.react-flow__node:hover .react-flow__handle {
+  opacity: 1;
+}
+
+.react-flow__node.selected .react-flow__handle {
+  opacity: 1;
+}
+
+/* 邊樣式 */
+.react-flow__edge {
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  transition:
+    stroke 0.2s ease,
+    stroke-width 0.2s ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #2563eb !important;
+  stroke-width: 3 !important;
+}
+
+/* 控制按鈕樣式 */
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__controls-button {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.react-flow__controls-button:hover {
+  background: #f3f4f6;
+}
+
+/* MiniMap 樣式 */
+.react-flow__minimap {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 中心節點特殊樣式 */
+.center-node-glow {
+  filter: drop-shadow(0 4px 12px rgba(65, 105, 225, 0.3));
+}
+
+/* 主題節點特殊樣式 */
+.topic-node-shadow {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+/* 選中節點的脈衝動畫 */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+}
+
+.react-flow__node.selected::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 16px;
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
+}
+
+/* 連接線動畫效果 */
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* 背景網格自訂 */
+.react-flow__background {
+  background-color: #f8f9fa;
+}
+
+/* 節點拖拽時的樣式 */
+.react-flow__node.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+}
+
+/* 平滑的縮放過渡 */
+.react-flow__viewport {
+  transition: transform 0.3s ease;
+}
