@@ -40,12 +40,21 @@ function buildHierarchy(nodes: Node[], edges: Edge[]) {
     childrenMap.set(node.id, []);
   });
 
-  // 建立父子關係
+  // 建立父子關係（按照 edges 的順序，保持創建順序）
   edges.forEach((edge) => {
     const children = childrenMap.get(edge.source);
     if (children && !children.includes(edge.target)) {
       children.push(edge.target);
     }
+  });
+
+  // 對每個節點的子節點進行排序（按照節點在 nodes 陣列中的順序）
+  childrenMap.forEach((children) => {
+    children.sort((a, b) => {
+      const indexA = nodes.findIndex((n) => n.id === a);
+      const indexB = nodes.findIndex((n) => n.id === b);
+      return indexA - indexB;
+    });
   });
 
   return { nodeMap, childrenMap };
