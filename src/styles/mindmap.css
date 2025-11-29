@@ -1,0 +1,37 @@
+/* MindMap Editor Styles */
+
+/* 1. 使用 CSS transform 啟用 GPU 加速 */
+.node-group {
+  will-change: transform;
+}
+
+/* 2. 使用 CSS transition 而非 JS 動畫 */
+.node-rect {
+  transition:
+    filter 0.15s ease-in-out,
+    stroke 0.15s ease-in-out;
+}
+
+/* 3. 避免不必要的重繪 */
+.edge {
+  pointer-events: none; /* 連線不需要接收事件 */
+}
+
+/* Canvas cursor */
+.mindmap-canvas {
+  cursor: grab;
+}
+
+.mindmap-canvas:active {
+  cursor: grabbing;
+}
+
+/* Node input styling */
+.node-input {
+  font-family: 'Inter', sans-serif;
+  padding: 0.5rem;
+}
+
+.node-input:focus {
+  outline: none;
+}

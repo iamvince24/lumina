@@ -1,0 +1,294 @@
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
+import type {
+  MindMapNode,
+  MindMapEdge,
+  Viewport,
+  ViewMode,
+} from '../mindmap/types';
+import { calculateLayout, centerLayout } from '../mindmap/calculations';
+import { NODE_DEFAULTS } from '../mindmap/constants';
+
+interface MindMapState {
+  // 資料
+  nodes: MindMapNode[];
+  edges: MindMapEdge[];
+
+  // 視圖狀態
+  viewport: Viewport;
+  viewMode: ViewMode;
+
+  // 選取狀態
+  selectedNodeIds: string[];
+  editingNodeId: string | null;
+
+  // 歷史紀錄（Undo/Redo）
+  history: { nodes: MindMapNode[]; edges: MindMapEdge[] }[];
+  historyIndex: number;
+}
+
+interface MindMapActions {
+  // 節點操作
+  addNode: (parentId: string | null, label?: string) => string;
+  updateNode: (nodeId: string, updates: Partial<MindMapNode>) => void;
+  deleteNode: (nodeId: string) => void;
+
+  // 連線操作
+  addEdge: (sourceId: string, targetId: string) => void;
+  deleteEdge: (edgeId: string) => void;
+
+  // 選取操作
+  setSelectedNodes: (nodeIds: string[]) => void;
+  setEditingNode: (nodeId: string | null) => void;
+
+  // 視圖操作
+  setViewport: (viewport: Viewport) => void;
+  setViewMode: (mode: ViewMode) => void;
+
+  // 佈局操作
+  applyLayout: () => void;
+  centerView: (canvasWidth: number, canvasHeight: number) => void;
+
+  // 歷史操作
+  undo: () => void;
+  redo: () => void;
+  saveToHistory: () => void;
+
+  // 資料操作
+  loadMindMap: (nodes: MindMapNode[], edges: MindMapEdge[]) => void;
+  reset: () => void;
+}
+
+const initialState: MindMapState = {
+  nodes: [],
+  edges: [],
+  viewport: { x: 0, y: 0, zoom: 1 },
+  viewMode: 'horizontal',
+  selectedNodeIds: [],
+  editingNodeId: null,
+  history: [],
+  historyIndex: -1,
+};
+
+export const useMindMapStore = create<MindMapState & MindMapActions>()(
+  devtools(
+    persist(
+      immer((set, get) => ({
+        ...initialState,
+
+        // === 節點操作 ===
+
+        addNode: (parentId, label = '新節點') => {
+          const id = crypto.randomUUID();
+
+          set((state) => {
+            const newNode: MindMapNode = {
+              id,
+              parentId,
+              label,
+              position: { x: 0, y: 0 },
+              width: NODE_DEFAULTS.WIDTH,
+              height: NODE_DEFAULTS.HEIGHT,
+              isExpanded: true,
+              isTopic: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            state.nodes.push(newNode);
+
+            // 如果有父節點，建立連線
+            if (parentId) {
+              state.edges.push({
+                id: crypto.randomUUID(),
+                sourceId: parentId,
+                targetId: id,
+              });
+            }
+
+            // 自動選取新節點
+            state.selectedNodeIds = [id];
+            state.editingNodeId = id;
+          });
+
+          // 套用佈局
+          get().applyLayout();
+          get().saveToHistory();
+
+          return id;
+        },
+
+        updateNode: (nodeId, updates) => {
+          set((state) => {
+            const node = state.nodes.find((n: MindMapNode) => n.id === nodeId);
+            if (node) {
+              Object.assign(node, updates, { updatedAt: new Date() });
+            }
+          });
+        },
+
+        deleteNode: (nodeId) => {
+          set((state) => {
+            // 刪除節點及其所有後代
+            const idsToDelete = new Set<string>();
+
+            const collectDescendants = (id: string) => {
+              idsToDelete.add(id);
+              state.nodes
+                .filter((n: MindMapNode) => n.parentId === id)
+                .forEach((n: MindMapNode) => collectDescendants(n.id));
+            };
+
+            collectDescendants(nodeId);
+
+            // 刪除節點
+            state.nodes = state.nodes.filter(
+              (n: MindMapNode) => !idsToDelete.has(n.id)
+            );
+
+            // 刪除相關連線
+            state.edges = state.edges.filter(
+              (e: MindMapEdge) =>
+                !idsToDelete.has(e.sourceId) && !idsToDelete.has(e.targetId)
+            );
+
+            // 清除選取
+            state.selectedNodeIds = state.selectedNodeIds.filter(
+              (id: string) => !idsToDelete.has(id)
+            );
+          });
+
+          get().saveToHistory();
+        },
+
+        // === 連線操作 ===
+
+        addEdge: (sourceId, targetId) => {
+          set((state) => {
+            state.edges.push({
+              id: crypto.randomUUID(),
+              sourceId,
+              targetId,
+            });
+          });
+        },
+
+        deleteEdge: (edgeId) => {
+          set((state) => {
+            state.edges = state.edges.filter(
+              (e: MindMapEdge) => e.id !== edgeId
+            );
+          });
+        },
+
+        // === 選取操作 ===
+
+        setSelectedNodes: (nodeIds) => {
+          set({ selectedNodeIds: nodeIds });
+        },
+
+        setEditingNode: (nodeId) => {
+          set({ editingNodeId: nodeId });
+        },
+
+        // === 視圖操作 ===
+
+        setViewport: (viewport) => {
+          set({ viewport });
+        },
+
+        setViewMode: (mode) => {
+          set({ viewMode: mode });
+          get().applyLayout();
+        },
+
+        // === 佈局操作 ===
+
+        applyLayout: () => {
+          set((state) => {
+            const layoutMode =
+              state.viewMode === 'radial' ? 'radial' : 'horizontal';
+            state.nodes = calculateLayout(state.nodes, layoutMode);
+          });
+        },
+
+        centerView: (canvasWidth, canvasHeight) => {
+          set((state) => {
+            state.nodes = centerLayout(state.nodes, canvasWidth, canvasHeight);
+          });
+        },
+
+        // === 歷史操作 ===
+
+        saveToHistory: () => {
+          set((state) => {
+            const snapshot = {
+              nodes: JSON.parse(JSON.stringify(state.nodes)),
+              edges: JSON.parse(JSON.stringify(state.edges)),
+            };
+
+            // 截斷未來的歷史
+            state.history = state.history.slice(0, state.historyIndex + 1);
+            state.history.push(snapshot);
+            state.historyIndex = state.history.length - 1;
+
+            // 限制歷史長度
+            if (state.history.length > 50) {
+              state.history = state.history.slice(-50);
+              state.historyIndex = state.history.length - 1;
+            }
+          });
+        },
+
+        undo: () => {
+          set((state) => {
+            if (state.historyIndex > 0) {
+              state.historyIndex -= 1;
+              const snapshot = state.history[state.historyIndex];
+              state.nodes = snapshot.nodes;
+              state.edges = snapshot.edges;
+            }
+          });
+        },
+
+        redo: () => {
+          set((state) => {
+            if (state.historyIndex < state.history.length - 1) {
+              state.historyIndex += 1;
+              const snapshot = state.history[state.historyIndex];
+              state.nodes = snapshot.nodes;
+              state.edges = snapshot.edges;
+            }
+          });
+        },
+
+        // === 資料操作 ===
+
+        loadMindMap: (nodes, edges) => {
+          set({
+            nodes,
+            edges,
+            selectedNodeIds: [],
+            editingNodeId: null,
+          });
+          get().applyLayout();
+          get().saveToHistory();
+        },
+
+        reset: () => {
+          set(initialState);
+        },
+      })),
+      {
+        name: 'lumina-mindmap',
+        partialize: (state) => ({
+          nodes: state.nodes,
+          edges: state.edges,
+          viewMode: state.viewMode,
+        }),
+      }
+    ),
+    { name: 'MindMapStore' }
+  )
+);

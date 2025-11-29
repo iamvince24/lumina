@@ -20,7 +20,7 @@
       "@/types/*": ["./src/types/*"],
       "@/utils/*": ["./src/utils/*"],
       "@/hooks/*": ["./src/hooks/*"],
-      "@/lib/*": ["./lib/*"],
+      "@/lib/*": ["./src/lib/*"],
       "@/lib/supabase/*": ["./lib/supabase/*"]
     },
     "baseUrl": ".",
