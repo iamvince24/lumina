@@ -18,6 +18,7 @@ const viewModeOptions: Array<{
   { value: 'radial', label: '放射狀', icon: '🎯' },
   { value: 'outliner', label: '大綱', icon: '📋' },
   { value: 'logicChart', label: '邏輯圖', icon: '🌳' },
+  { value: 'horizontal', label: '橫向', icon: '→' },
 ];
 
 interface ViewSwitcherProps {

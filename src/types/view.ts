@@ -11,7 +11,7 @@ import type { Node } from './mindmap';
 /**
  * 支援的視圖模式
  */
-export type ViewMode = 'radial' | 'outliner' | 'logicChart';
+export type ViewMode = 'radial' | 'outliner' | 'logicChart' | 'horizontal';
 
 /**
  * 佈局方向（用於 Logic Chart）

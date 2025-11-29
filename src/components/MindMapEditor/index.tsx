@@ -15,13 +15,14 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import { useMindMapStore } from '@/stores/mindmapStore';
 import { useTagStore } from '@/stores/tagStore';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
-import { TagDialog } from '@/components/TagSystem/TagDialog';
+import { NodeTagDialog } from '@/components/TagSystem/NodeTagDialog';
 import { ExportDialog } from '@/components/ExportSystem/ExportDialog';
 import { DataManagement } from './DataManagement';
 import { ViewSwitcher } from './ViewSwitcher';
 import { RadialView } from './RadialView';
 import { OutlinerView } from './OutlinerView';
 import { LogicChartView } from './LogicChartView';
+import { HorizontalView } from './HorizontalView';
 
 interface MindMapEditorProps {
   /** MindMap ID */
@@ -210,6 +211,20 @@ export function MindMapEditor({
               <LogicChartView />
             </motion.div>
           )}
+
+          {currentView === 'horizontal' && (
+            <motion.div
+              key="horizontal"
+              className="absolute inset-0"
+              variants={viewAnimationVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+            >
+              <HorizontalView />
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -224,10 +239,9 @@ export function MindMapEditor({
       )}
 
       {/* Tag Dialog */}
-      <TagDialog
+      <NodeTagDialog
         open={tagDialogOpen}
         onClose={() => setTagDialogOpen(false)}
-        nodeId={selectedNodeForTag || ''}
         currentTags={
           selectedNodeForTag
             ? nodes

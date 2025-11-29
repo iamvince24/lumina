@@ -43,6 +43,9 @@ export interface NodeData {
 
   /** 最後更新時間 */
   updatedAt?: Date;
+
+  /** 節點深度 (用於樣式渲染) */
+  depth?: number;
 }
 
 /**
