@@ -1,6 +1,5 @@
-import { memo, useRef, useState, useEffect, useCallback } from 'react';
+import { memo, useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Group } from '@visx/group';
-import { Drag } from '@visx/drag';
 import type { HierarchyPointNode } from 'd3-hierarchy';
 import type { MindMapNodeData, ViewMode } from '@/lib/mindmap/types';
 import { useMindMapStore } from '@/lib/stores/mindmapStore';
@@ -77,21 +76,23 @@ function arePropsEqual(
 }
 
 export const MindMapNode = memo<MindMapNodeProps>(
-  ({ node, viewMode, isSelected, isEditing, allNodes }) => {
+  ({ node, viewMode, isSelected, isEditing, allNodes, zoom }) => {
     const inputRef = useRef<HTMLInputElement>(null);
+    const nodeGroupRef = useRef<SVGGElement>(null);
     const [isHovered, setIsHovered] = useState(false);
     const [inputValue, setInputValue] = useState(node.data.label);
     const [potentialTargetIds, setPotentialTargetIds] = useState<string[]>([]);
+    const isDraggingRef = useRef(false);
+    const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null);
 
-    // Store actions
-    const {
-      selectedNodeIds,
-      setSelectedNodes,
-      setEditingNode,
-      updateNode,
-      draggingNodeId,
-      setDraggingNode,
-    } = useMindMapStore();
+    // Optimize Zustand subscriptions - use individual selectors to prevent unnecessary re-renders
+    const selectedNodeIds = useMindMapStore((state) => state.selectedNodeIds);
+    const setSelectedNodes = useMindMapStore((state) => state.setSelectedNodes);
+    const setEditingNode = useMindMapStore((state) => state.setEditingNode);
+    const updateNode = useMindMapStore((state) => state.updateNode);
+    const setDraggingNode = useMindMapStore((state) => state.setDraggingNode);
+    // Only subscribe to draggingNodeId if this node is the one being dragged
+    const draggingNodeId = useMindMapStore((state) => state.draggingNodeId);
 
     // Calculate node position (visx Tree x/y are swapped)
     const nodeX = viewMode === 'horizontal' ? node.y : node.x;
@@ -212,10 +213,35 @@ export const MindMapNode = memo<MindMapNodeProps>(
       setEditingNode(null);
     }, [node.data.id, inputValue, updateNode, setEditingNode]);
 
-    const handleDragStart = useCallback(() => {
-      setDraggingNode(node.data.id);
-      setPotentialTargetIds([]);
-    }, [node.data.id, setDraggingNode]);
+    // Store initial mouse position and node position for drag calculations
+    const dragStartMouseRef = useRef<{ x: number; y: number } | null>(null);
+
+    const handleMouseDown = useCallback(
+      (event: React.MouseEvent) => {
+        // Don't start drag if editing or clicking on interactive elements
+        if (isEditing) return;
+
+        // Check if clicking on expand/collapse button
+        const target = event.target as HTMLElement;
+        if (target.closest('.expand-button')) return;
+
+        event.stopPropagation();
+        event.preventDefault();
+
+        isDraggingRef.current = true;
+        setDraggingNode(node.data.id);
+        setPotentialTargetIds([]);
+
+        // Store initial mouse position in screen coordinates
+        dragStartMouseRef.current = { x: event.clientX, y: event.clientY };
+
+        // Store initial node position (in unscaled SVG coordinates)
+        const startX = viewMode === 'horizontal' ? node.y : node.x;
+        const startY = viewMode === 'horizontal' ? node.x : node.y;
+        dragStartPositionRef.current = { x: startX ?? 0, y: startY ?? 0 };
+      },
+      [node.data.id, node.x, node.y, viewMode, setDraggingNode, isEditing]
+    );
 
     // Use ref to store descendants to avoid recalculating on every drag move
     const descendantsRef = useRef<Set<string>>(new Set());
@@ -230,82 +256,120 @@ export const MindMapNode = memo<MindMapNodeProps>(
       descendantsRef.current = descendantIds;
     }, [node]);
 
-    // Create throttled drag move handler
-    const handleDragMoveThrottled = useRef(
-      throttle(
-        (
-          finalX: number,
-          finalY: number,
-          allNodes: HierarchyPointNode<MindMapNodeData>[],
-          viewMode: ViewMode,
-          descendantIds: Set<string>,
-          parentId: string | undefined
-        ) => {
-          // 找出距離 < 100px 的有效目標
-          const targets: string[] = [];
-          const THRESHOLD = 100;
+    // Create throttled drag move handler using useMemo to avoid ref access during render
+    // Note: The throttled function captures allNodes, viewMode, and parentId from closure
+    // We keep dependencies minimal to avoid recreating the throttled function unnecessarily
+    const handleDragMoveThrottled = useMemo(
+      () =>
+        throttle(
+          (
+            finalX: number,
+            finalY: number,
+            allNodesParam: HierarchyPointNode<MindMapNodeData>[],
+            viewModeParam: ViewMode,
+            descendantIds: Set<string>,
+            parentId: string | undefined
+          ) => {
+            // 找出距離 < 100px 的有效目標
+            const targets: string[] = [];
+            const THRESHOLD = 100;
 
-          for (const target of allNodes) {
-            if (
-              descendantIds.has(target.data.id) ||
-              target.data.id === parentId
-            ) {
-              continue;
+            for (const target of allNodesParam) {
+              if (
+                descendantIds.has(target.data.id) ||
+                target.data.id === parentId
+              ) {
+                continue;
+              }
+
+              const targetX =
+                viewModeParam === 'horizontal' ? target.y : target.x;
+              const targetY =
+                viewModeParam === 'horizontal' ? target.x : target.y;
+
+              const dist = Math.sqrt(
+                Math.pow(finalX - targetX, 2) + Math.pow(finalY - targetY, 2)
+              );
+
+              if (dist < THRESHOLD) {
+                targets.push(target.data.id);
+              }
             }
 
-            const targetX = viewMode === 'horizontal' ? target.y : target.x;
-            const targetY = viewMode === 'horizontal' ? target.x : target.y;
-
-            const dist = Math.sqrt(
-              Math.pow(finalX - targetX, 2) + Math.pow(finalY - targetY, 2)
-            );
-
-            if (dist < THRESHOLD) {
-              targets.push(target.data.id);
-            }
-          }
-
-          setPotentialTargetIds(targets);
-        },
-        16 // ~60fps
-      )
-    ).current;
-
-    const handleDragMove = useCallback(
-      ({ dx, dy }: { dx: number; dy: number }) => {
-        const finalX = (nodeX ?? 0) + dx;
-        const finalY = (nodeY ?? 0) + dy;
-
-        handleDragMoveThrottled(
-          finalX,
-          finalY,
-          allNodes,
-          viewMode,
-          descendantsRef.current,
-          node.parent?.data.id
-        );
-      },
-      [
-        nodeX,
-        nodeY,
-        allNodes,
-        viewMode,
-        node.parent?.data.id,
-        handleDragMoveThrottled,
-      ]
+            setPotentialTargetIds(targets);
+          },
+          16 // ~60fps
+        ),
+      // Empty deps - throttled function is stable and captures values from closure when called
+      []
     );
 
     const handleDragEnd = useCallback(
-      ({ dx, dy }: { dx: number; dy: number }) => {
-        // 清除拖曳狀態
+      (event: React.MouseEvent) => {
+        event.stopPropagation();
+
+        if (
+          !isDraggingRef.current ||
+          !nodeGroupRef.current ||
+          !dragStartPositionRef.current
+        ) {
+          return;
+        }
+
+        isDraggingRef.current = false;
+
+        // Get final position from DOM (single source of truth)
+        const transform = nodeGroupRef.current.getAttribute('transform');
+        if (!transform) {
+          setDraggingNode(null);
+          setPotentialTargetIds([]);
+          dragStartPositionRef.current = null;
+          return;
+        }
+
+        // Parse transform to get final position
+        const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (!match) {
+          setDraggingNode(null);
+          setPotentialTargetIds([]);
+          dragStartPositionRef.current = null;
+          return;
+        }
+
+        const finalX = parseFloat(match[1]) + width / 2;
+        const finalY = parseFloat(match[2]) + height / 2;
+
+        const dx = finalX - dragStartPositionRef.current.x;
+        const dy = finalY - dragStartPositionRef.current.y;
+
+        // Clear dragging state
         setDraggingNode(null);
         setPotentialTargetIds([]);
+        dragStartPositionRef.current = null;
+        dragStartMouseRef.current = null;
 
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-        if (!node.parent) return; // Cannot re-parent root
+        // Calculate original position
+        const originalX = viewMode === 'horizontal' ? node.y : node.x;
+        const originalY = viewMode === 'horizontal' ? node.x : node.y;
 
-        const finalX = (nodeX ?? 0) + dx;
-        const finalY = (nodeY ?? 0) + dy;
+        // Only proceed if moved significantly
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+          // Reset position to original if not moved
+          nodeGroupRef.current.setAttribute(
+            'transform',
+            `translate(${(originalX ?? 0) - width / 2}, ${(originalY ?? 0) - height / 2})`
+          );
+          return;
+        }
+
+        if (!node.parent) {
+          // Reset position if root node
+          nodeGroupRef.current.setAttribute(
+            'transform',
+            `translate(${(originalX ?? 0) - width / 2}, ${(originalY ?? 0) - height / 2})`
+          );
+          return;
+        }
 
         // Find all descendants to exclude them as potential parents
         const descendantIds = new Set<string>();
@@ -341,11 +405,19 @@ export const MindMapNode = memo<MindMapNodeProps>(
           }
         });
 
+        // Sync final position to store only on dragEnd
+        // The layout will recalculate positions, so we don't need to update position here
         if (nearestNodeId) {
           updateNode(node.data.id, { parentId: nearestNodeId });
+        } else {
+          // Reset position if no valid target found
+          nodeGroupRef.current.setAttribute(
+            'transform',
+            `translate(${(originalX ?? 0) - width / 2}, ${(originalY ?? 0) - height / 2})`
+          );
         }
       },
-      [node, nodeX, nodeY, allNodes, updateNode, viewMode, setDraggingNode]
+      [node, allNodes, updateNode, viewMode, setDraggingNode, width, height]
     );
 
     // Determine if node has children (for expand/collapse button)
@@ -382,169 +454,274 @@ export const MindMapNode = memo<MindMapNodeProps>(
     const isDraggingThis = draggingNodeId === node.data.id;
     const isPotentialTarget = potentialTargetIds.includes(node.data.id);
 
+    // Handle mouse move globally when dragging - Zero-lag implementation
+    useEffect(() => {
+      if (!isDraggingThis) {
+        // Reset drag state when not dragging this node
+        isDraggingRef.current = false;
+        dragStartMouseRef.current = null;
+        return;
+      }
+
+      const handleGlobalMouseMove = (event: MouseEvent) => {
+        // Use refs to avoid dependency issues - critical for zero-lag performance
+        if (
+          !isDraggingRef.current ||
+          !nodeGroupRef.current ||
+          !dragStartPositionRef.current ||
+          !dragStartMouseRef.current
+        ) {
+          return;
+        }
+
+        // Calculate mouse delta in screen coordinates
+        const dx = (event.clientX - dragStartMouseRef.current.x) / zoom;
+        const dy = (event.clientY - dragStartMouseRef.current.y) / zoom;
+
+        // Calculate new position in unscaled SVG coordinate space
+        const finalX = dragStartPositionRef.current.x + dx;
+        const finalY = dragStartPositionRef.current.y + dy;
+
+        // CRITICAL: Direct DOM manipulation - NO React state updates here
+        // This bypasses React's render cycle completely for 60fps dragging
+        nodeGroupRef.current.setAttribute(
+          'transform',
+          `translate(${finalX - width / 2}, ${finalY - height / 2})`
+        );
+
+        // Throttled re-parenting detection (runs independently, doesn't affect visual update)
+        handleDragMoveThrottled(
+          finalX,
+          finalY,
+          allNodes,
+          viewMode,
+          descendantsRef.current,
+          node.parent?.data.id
+        );
+      };
+
+      const handleGlobalMouseUp = (event: MouseEvent) => {
+        if (!isDraggingRef.current) return;
+
+        // Create synthetic event for handleDragEnd
+        const syntheticEvent = {
+          ...event,
+          stopPropagation: () => event.stopPropagation(),
+          preventDefault: () => event.preventDefault(),
+        } as unknown as React.MouseEvent;
+
+        handleDragEnd(syntheticEvent);
+      };
+
+      // Use capture phase to ensure we catch events before other handlers
+      window.addEventListener('mousemove', handleGlobalMouseMove, {
+        passive: true,
+      });
+      window.addEventListener('mouseup', handleGlobalMouseUp, {
+        capture: true,
+      });
+
+      return () => {
+        window.removeEventListener('mousemove', handleGlobalMouseMove);
+        window.removeEventListener('mouseup', handleGlobalMouseUp, {
+          capture: true,
+        });
+      };
+    }, [
+      isDraggingThis,
+      zoom,
+      width,
+      height,
+      allNodes,
+      viewMode,
+      node.parent?.data.id,
+      handleDragMoveThrottled,
+      handleDragEnd,
+    ]);
+
+    // Initialize position on mount - use ref to track if initialized
+    const isInitializedRef = useRef(false);
+    useEffect(() => {
+      if (!isInitializedRef.current && nodeGroupRef.current) {
+        nodeGroupRef.current.setAttribute(
+          'transform',
+          `translate(${(nodeX ?? 0) - width / 2}, ${(nodeY ?? 0) - height / 2})`
+        );
+        isInitializedRef.current = true;
+      }
+    }, [nodeX, nodeY, width, height]);
+
+    // Sync position from props ONLY when not dragging
+    // This prevents React from resetting the position during drag
+    useEffect(() => {
+      // CRITICAL: Only update DOM if we're NOT dragging this node
+      // This prevents the "ghosting" at (0,0) issue
+      if (!isDraggingThis && !isDraggingRef.current && nodeGroupRef.current) {
+        nodeGroupRef.current.setAttribute(
+          'transform',
+          `translate(${(nodeX ?? 0) - width / 2}, ${(nodeY ?? 0) - height / 2})`
+        );
+      }
+    }, [nodeX, nodeY, width, height, isDraggingThis]);
+
     return (
-      <Drag
-        width={width}
-        height={height}
-        x={nodeX}
-        y={nodeY}
-        onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
+      <Group
+        ref={nodeGroupRef}
+        className={`mindmap-node ${isSelected ? 'selected' : ''} ${isDraggingThis ? 'dragging' : ''} ${isPotentialTarget ? 'potential-target' : ''}`}
+        // CRITICAL: Do NOT set transform prop - we manage it via direct DOM manipulation
+        // Setting transform prop here causes conflicts and ghosting issues
+        opacity={isDraggingThis ? 0.7 : 1}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onMouseDown={handleMouseDown}
+        style={{
+          cursor: isEditing ? 'text' : isDraggingThis ? 'grabbing' : 'grab',
+        }}
       >
-        {({ dragStart, dragEnd, dragMove, isDragging, x, y, dx, dy }) => (
-          <Group
-            className={`mindmap-node ${isSelected ? 'selected' : ''} ${isDraggingThis ? 'dragging' : ''} ${isPotentialTarget ? 'potential-target' : ''}`}
-            transform={`translate(${(nodeX ?? 0) + (isDragging ? dx : 0) - width / 2}, ${(nodeY ?? 0) + (isDragging ? dy : 0) - height / 2})`}
-            opacity={isDraggingThis ? 0.7 : 1}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
-            onMouseDown={dragStart}
-            onMouseMove={dragMove}
-            onMouseUp={dragEnd}
-          >
-            <MotionGroup
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={nodeVariants}
+        <MotionGroup
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={nodeVariants}
+        >
+          {/* Node background */}
+          <MotionRect
+            width={width}
+            height={height}
+            rx={borderRadius}
+            ry={borderRadius}
+            fill={fillColor}
+            stroke={borderColor}
+            strokeWidth={borderWidth}
+            filter={filter}
+            style={{
+              cursor: isEditing ? 'text' : isDraggingThis ? 'grabbing' : 'grab',
+            }}
+            animate={{
+              fill: fillColor,
+              stroke: borderColor,
+              strokeWidth: borderWidth,
+            }}
+            transition={{
+              duration: ANIMATION.DURATION_FAST / 1000,
+            }}
+          />
+
+          {/* Depth color indicator */}
+          <MotionRect
+            x={0}
+            y={0}
+            width={4}
+            height={height}
+            rx={2}
+            fill={depthColor}
+            animate={{ fill: depthColor }}
+            transition={{ duration: ANIMATION.DURATION_FAST / 1000 }}
+          />
+
+          {/* Topic marker */}
+          {node.data.isTopic && (
+            <MotionCircle
+              cx={width - 10}
+              cy={10}
+              r={4}
+              fill={COLORS.PRIMARY}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1 }}
+            />
+          )}
+
+          {/* Node content */}
+          {isEditing ? (
+            <foreignObject
+              x={NODE_DEFAULTS.PADDING}
+              y={0}
+              width={width - NODE_DEFAULTS.PADDING * 2}
+              height={height}
             >
-              {/* Node background */}
-              <MotionRect
-                width={width}
-                height={height}
-                rx={borderRadius}
-                ry={borderRadius}
-                fill={fillColor}
-                stroke={borderColor}
-                strokeWidth={borderWidth}
-                filter={filter}
+              <div
                 style={{
-                  cursor: isEditing ? 'text' : isDragging ? 'grabbing' : 'grab',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
                 }}
-                animate={{
-                  fill: fillColor,
-                  stroke: borderColor,
-                  strokeWidth: borderWidth,
-                }}
-                transition={{
-                  duration: ANIMATION.DURATION_FAST / 1000,
-                }}
-              />
-
-              {/* Depth color indicator */}
-              <MotionRect
-                x={0}
-                y={0}
-                width={4}
-                height={height}
-                rx={2}
-                fill={depthColor}
-                animate={{ fill: depthColor }}
-                transition={{ duration: ANIMATION.DURATION_FAST / 1000 }}
-              />
-
-              {/* Topic marker */}
-              {node.data.isTopic && (
-                <MotionCircle
-                  cx={width - 10}
-                  cy={10}
-                  r={4}
-                  fill={COLORS.PRIMARY}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.1 }}
+              >
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyDown={handleInputKeyDown}
+                  onBlur={handleInputBlur}
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    background: 'transparent',
+                    textAlign: 'center',
+                    outline: 'none',
+                    fontSize: node.data.fontSize || 14,
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    color: COLORS.TEXT_PRIMARY,
+                  }}
                 />
-              )}
+              </div>
+            </foreignObject>
+          ) : (
+            <text
+              x={width / 2}
+              y={height / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={COLORS.TEXT_PRIMARY}
+              fontSize={node.data.fontSize || 14}
+              fontFamily="Inter, system-ui, sans-serif"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              {node.data.label || 'Untitled'}
+            </text>
+          )}
 
-              {/* Node content */}
-              {isEditing ? (
-                <foreignObject
-                  x={NODE_DEFAULTS.PADDING}
-                  y={0}
-                  width={width - NODE_DEFAULTS.PADDING * 2}
-                  height={height}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '100%',
-                      height: '100%',
-                    }}
-                  >
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={inputValue}
-                      onChange={handleInputChange}
-                      onKeyDown={handleInputKeyDown}
-                      onBlur={handleInputBlur}
-                      style={{
-                        width: '100%',
-                        border: 'none',
-                        background: 'transparent',
-                        textAlign: 'center',
-                        outline: 'none',
-                        fontSize: node.data.fontSize || 14,
-                        fontFamily: 'Inter, system-ui, sans-serif',
-                        color: COLORS.TEXT_PRIMARY,
-                      }}
-                    />
-                  </div>
-                </foreignObject>
-              ) : (
-                <text
-                  x={width / 2}
-                  y={height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill={COLORS.TEXT_PRIMARY}
-                  fontSize={node.data.fontSize || 14}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >
-                  {node.data.label || 'Untitled'}
-                </text>
-              )}
-
-              {/* Expand/collapse toggle button */}
-              {hasChildren && (
-                <Group transform={`translate(${width - 16}, ${height / 2})`}>
-                  <MotionCircle
-                    r={8}
-                    fill={COLORS.NODE_BORDER}
-                    style={{ cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateNode(node.data.id, {
-                        isExpanded: !node.data.isExpanded,
-                      });
-                    }}
-                    whileHover={{ scale: 1.1, fill: COLORS.NODE_BORDER_HOVER }}
-                    whileTap={{ scale: 0.95 }}
-                  />
-                  <MotionText
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill={COLORS.TEXT_SECONDARY}
-                    fontSize={10}
-                    style={{ pointerEvents: 'none' }}
-                    animate={{
-                      rotate: isExpanded ? 0 : 0,
-                    }}
-                  >
-                    {isCollapsed ? '+' : '−'}
-                  </MotionText>
-                </Group>
-              )}
-            </MotionGroup>
-          </Group>
-        )}
-      </Drag>
+          {/* Expand/collapse toggle button */}
+          {hasChildren && (
+            <Group
+              transform={`translate(${width - 16}, ${height / 2})`}
+              className="expand-button"
+            >
+              <MotionCircle
+                r={8}
+                fill={COLORS.NODE_BORDER}
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateNode(node.data.id, {
+                    isExpanded: !node.data.isExpanded,
+                  });
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                whileHover={{ scale: 1.1, fill: COLORS.NODE_BORDER_HOVER }}
+                whileTap={{ scale: 0.95 }}
+              />
+              <MotionText
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={COLORS.TEXT_SECONDARY}
+                fontSize={10}
+                style={{ pointerEvents: 'none' }}
+                animate={{
+                  rotate: isExpanded ? 0 : 0,
+                }}
+              >
+                {isCollapsed ? '+' : '−'}
+              </MotionText>
+            </Group>
+          )}
+        </MotionGroup>
+      </Group>
     );
   },
   arePropsEqual
