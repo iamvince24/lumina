@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, forwardRef } from 'react';
+import { useEffect, useRef, forwardRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { D3MindMapData, D3MindMapNode } from '@/types/d3-mindmap';
 
@@ -9,6 +9,7 @@ interface D3GraphProps {
   width: number;
   height: number;
   onZoomChange?: (transform: d3.ZoomTransform) => void;
+  onNodeLabelChange?: (nodeId: string, newLabel: string) => void;
   layout?: 'horizontal' | 'radial';
 }
 
@@ -26,20 +27,23 @@ type MindMapNodeWithChildren = D3MindMapNode & {
  * Uses d3.tree() and d3.hierarchy() for hierarchical tree layout
  */
 export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
-  { data, width, height, onZoomChange, layout = 'radial' },
+  { data, width, height, onZoomChange, onNodeLabelChange, layout = 'radial' },
   ref
 ) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editPosition, setEditPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
 
     const svg = d3.select(svgRef.current);
     const g = d3.select(gRef.current);
-
-    // Clear previous content (important for React Strict Mode)
-    g.selectAll('*').remove();
 
     // Build hierarchy from flat node data
     const rootNode = data.nodes.find((n) => n.parentId === null);
@@ -68,23 +72,37 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
     let treeLayout: d3.TreeLayout<D3MindMapNode>;
 
     if (layout === 'radial') {
-      // Radial layout
-      const radius = Math.min(width, height) / 2 - 100;
-      treeLayout = d3.tree<D3MindMapNode>().size([2 * Math.PI, radius]);
+      // Radial layout with dynamic node sizing
+      treeLayout = d3
+        .tree<D3MindMapNode>()
+        .nodeSize([40, 200])
+        .separation(
+          (a, b) =>
+            (a.parent === b.parent ? 1 : 2) +
+            (a.data.label.length + b.data.label.length) * 0.05
+        );
 
       // Apply layout
       treeLayout(root);
 
       // Convert polar to cartesian for radial layout
+      const radius = Math.min(width, height) / 2 - 100;
       root.each((node: HierarchyNode) => {
         const angle = node.x;
-        const radius = node.y;
-        node.x = radius * Math.cos(angle - Math.PI / 2) + width / 2;
-        node.y = radius * Math.sin(angle - Math.PI / 2) + height / 2;
+        const r = node.y;
+        node.x = r * Math.cos(angle - Math.PI / 2) + width / 2;
+        node.y = r * Math.sin(angle - Math.PI / 2) + height / 2;
       });
     } else {
-      // Horizontal layout (tree grows from left to right)
-      treeLayout = d3.tree<D3MindMapNode>().size([height - 100, width - 200]);
+      // Horizontal layout with dynamic node sizing
+      treeLayout = d3
+        .tree<D3MindMapNode>()
+        .nodeSize([40, 200])
+        .separation(
+          (a, b) =>
+            (a.parent === b.parent ? 1 : 2) +
+            (a.data.label.length + b.data.label.length) * 0.05
+        );
 
       // Apply layout
       treeLayout(root);
@@ -92,21 +110,41 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
       // Adjust positions to center and swap x/y for horizontal layout
       root.each((node: HierarchyNode) => {
         const temp = node.x;
-        node.x = node.y + 100;
-        node.y = temp + 50;
+        node.x = node.y + width / 2;
+        node.y = temp + height / 2;
       });
     }
 
     // Create links (parent-child connections)
     const links = root.links();
 
-    // Draw links with curved paths
-    const linkGroup = g.append('g').attr('class', 'links');
+    // Draw links with curved paths using general update pattern
+    let linkGroup = g.select<SVGGElement>('g.links');
+    if (linkGroup.empty()) {
+      linkGroup = g.append('g').attr('class', 'links');
+    }
 
     linkGroup
-      .selectAll('path')
+      .selectAll<SVGPathElement, d3.HierarchyLink<D3MindMapNode>>('path')
       .data(links)
-      .join('path')
+      .join(
+        (enter) =>
+          enter
+            .append('path')
+            .attr('fill', 'none')
+            .attr(
+              'stroke',
+              (d: d3.HierarchyLink<D3MindMapNode>) =>
+                d.target.data.color || '#94A3B8'
+            )
+            .attr('stroke-width', 2)
+            .attr('stroke-opacity', 0),
+        (update) => update,
+        (exit) =>
+          exit.transition().duration(300).attr('stroke-opacity', 0).remove()
+      )
+      .transition()
+      .duration(300)
       .attr('d', (d: d3.HierarchyLink<D3MindMapNode>) => {
         if (layout === 'radial') {
           // Radial curved links
@@ -123,24 +161,32 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
                     ${(d.target as HierarchyNode).x} ${(d.target as HierarchyNode).y}`;
         }
       })
-      .attr('fill', 'none')
       .attr(
         'stroke',
         (d: d3.HierarchyLink<D3MindMapNode>) => d.target.data.color || '#94A3B8'
       )
-      .attr('stroke-width', 2)
       .attr('stroke-opacity', 0.6);
 
-    // Create node groups
-    const nodeGroup = g.append('g').attr('class', 'nodes');
+    // Create node groups using general update pattern
+    let nodeGroup = g.select<SVGGElement>('g.nodes');
+    if (nodeGroup.empty()) {
+      nodeGroup = g.append('g').attr('class', 'nodes');
+    }
 
     const nodes = nodeGroup
-      .selectAll('g')
-      .data(root.descendants())
-      .join('g')
-      .attr('class', 'node')
-      .attr('transform', (d: HierarchyNode) => `translate(${d.x},${d.y})`)
-      .attr('cursor', 'pointer')
+      .selectAll<SVGGElement, HierarchyNode>('g.node')
+      .data(root.descendants(), (d: HierarchyNode) => d.data.id)
+      .join(
+        (enter) =>
+          enter
+            .append('g')
+            .attr('class', 'node')
+            .attr('cursor', 'pointer')
+            .attr('transform', (d: HierarchyNode) => `translate(${d.x},${d.y})`)
+            .attr('opacity', 0),
+        (update) => update,
+        (exit) => exit.transition().duration(300).attr('opacity', 0).remove()
+      )
       .call(
         d3
           .drag<SVGGElement, HierarchyNode>()
@@ -180,7 +226,7 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
               });
           }) as unknown as (
           selection: d3.Selection<
-            SVGGElement | d3.BaseType,
+            SVGGElement,
             HierarchyNode,
             SVGGElement,
             unknown
@@ -188,19 +234,19 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
         ) => void
       );
 
-    // Add rectangles to nodes
+    // Animate to new positions
     nodes
-      .append('rect')
-      .attr('width', (d: HierarchyNode) => {
-        const baseWidth = 120;
-        const charWidth = 8;
-        return Math.max(baseWidth, d.data.label.length * charWidth + 40);
-      })
+      .transition()
+      .duration(300)
+      .attr('transform', (d: HierarchyNode) => `translate(${d.x},${d.y})`)
+      .attr('opacity', 1);
+
+    // Add/update rectangles to nodes
+    nodes
+      .selectAll<SVGRectElement, HierarchyNode>('rect')
+      .data((d) => [d])
+      .join('rect')
       .attr('height', 40)
-      .attr('x', (d: HierarchyNode) => {
-        const nodeWidth = Math.max(120, d.data.label.length * 8 + 40);
-        return -nodeWidth / 2;
-      })
       .attr('y', -20)
       .attr('rx', 8)
       .attr('ry', 8)
@@ -221,12 +267,37 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
           .transition()
           .duration(200)
           .attr('filter', 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))');
+      })
+      .on('dblclick', function (event, d: HierarchyNode) {
+        event.stopPropagation();
+        setEditingNodeId(d.data.id);
+        setEditValue(d.data.label);
+        // Calculate screen coordinates
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        if (svgRect) {
+          setEditPosition({
+            x: svgRect.left + d.x,
+            y: svgRect.top + d.y,
+          });
+        }
+      })
+      .transition()
+      .duration(300)
+      .attr('width', (d: HierarchyNode) => {
+        const baseWidth = 120;
+        const charWidth = 8;
+        return Math.max(baseWidth, d.data.label.length * charWidth + 40);
+      })
+      .attr('x', (d: HierarchyNode) => {
+        const nodeWidth = Math.max(120, d.data.label.length * 8 + 40);
+        return -nodeWidth / 2;
       });
 
-    // Add text labels to nodes
+    // Add/update text labels to nodes
     nodes
-      .append('text')
-      .text((d: HierarchyNode) => d.data.label)
+      .selectAll<SVGTextElement, HierarchyNode>('text')
+      .data((d) => [d])
+      .join('text')
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'middle')
       .attr('fill', '#111827')
@@ -237,7 +308,10 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
         d.depth === 0 ? '600' : '500'
       )
       .attr('pointer-events', 'none')
-      .style('user-select', 'none');
+      .style('user-select', 'none')
+      .transition()
+      .duration(300)
+      .text((d: HierarchyNode) => d.data.label);
 
     // Setup zoom behavior
     const zoom = d3
@@ -249,28 +323,61 @@ export const D3Graph = forwardRef<SVGSVGElement, D3GraphProps>(function D3Graph(
       });
 
     svg.call(zoom);
-
-    // Cleanup
-    return () => {
-      g.selectAll('*').remove();
-    };
   }, [data, width, height, onZoomChange, layout]);
 
+  // Handle save of edited label
+  const handleSaveEdit = () => {
+    if (editingNodeId && editValue.trim()) {
+      onNodeLabelChange?.(editingNodeId, editValue.trim());
+    }
+    setEditingNodeId(null);
+    setEditPosition(null);
+  };
   return (
-    <svg
-      ref={(node) => {
-        svgRef.current = node;
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      }}
-      width={width}
-      height={height}
-      className="border border-gray-200 rounded-lg bg-white"
-    >
-      <g ref={gRef} />
-    </svg>
+    <>
+      <svg
+        ref={(node) => {
+          svgRef.current = node;
+          if (typeof ref === 'function') {
+            ref(node);
+          } else if (ref) {
+            ref.current = node;
+          }
+        }}
+        width={width}
+        height={height}
+        className="border border-gray-200 rounded-lg bg-white"
+      >
+        <g ref={gRef} />
+      </svg>
+      {editingNodeId && editPosition && (
+        <div
+          style={{
+            position: 'fixed',
+            left: editPosition.x,
+            top: editPosition.y,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000,
+          }}
+        >
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSaveEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSaveEdit();
+              } else if (e.key === 'Escape') {
+                setEditingNodeId(null);
+                setEditPosition(null);
+              }
+            }}
+            autoFocus
+            className="px-3 py-2 border-2 border-blue-500 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+      )}
+    </>
   );
 });
