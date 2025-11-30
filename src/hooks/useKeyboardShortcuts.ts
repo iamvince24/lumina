@@ -4,7 +4,7 @@
  */
 
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useMindMapStore } from '@/stores/mindmapStore';
+import { useMindMapStore } from '@/lib/stores/mindmapStore';
 import { toast } from 'sonner';
 import type { ViewMode } from '@/types/view';
 
@@ -30,7 +30,7 @@ export interface ShortcutConfig {
 export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
   const { enabled = true, selectedNodeId, currentView } = config;
 
-  const { addNode, deleteNode, updateNode } = useMindMapStore();
+  const { addNode, deleteNode, updateNode, undo, redo } = useMindMapStore();
 
   /**
    * Enter: 新增同層 Node
@@ -50,13 +50,10 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
         .getState()
         .nodes.find((n) => n.id === selectedNodeId);
 
-      const parentId = selectedNode?.parentNode;
+      const parentId = selectedNode?.parentId;
 
       // 在相同層級新增 Node
-      addNode({
-        label: '新節點',
-        parentId,
-      });
+      addNode(parentId ?? null, '新節點');
 
       toast.success('已新增節點');
     },
@@ -82,10 +79,7 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
       }
 
       // 新增為選中 Node 的子節點
-      addNode({
-        label: '子節點',
-        parentId: selectedNodeId,
-      });
+      addNode(selectedNodeId, '子節點');
 
       toast.success('已新增子節點');
     },
@@ -122,13 +116,19 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
   );
 
   /**
-   * Cmd/Ctrl + Z: 復原（TODO: 需要實作 history）
+   * Cmd/Ctrl + Z: 復原
    */
   useHotkeys(
     'mod+z',
     (e) => {
       e.preventDefault();
-      toast.info('復原功能開發中');
+      const state = useMindMapStore.getState();
+      if (state.historyIndex > 0) {
+        undo();
+        toast.success('已復原');
+      } else {
+        toast.info('沒有可復原的操作');
+      }
     },
     {
       enabled,
@@ -139,13 +139,43 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
   );
 
   /**
-   * Cmd/Ctrl + Shift + Z: 重做（TODO: 需要實作 history）
+   * Cmd/Ctrl + Shift + Z: 重做
    */
   useHotkeys(
     'mod+shift+z',
     (e) => {
       e.preventDefault();
-      toast.info('重做功能開發中');
+      const state = useMindMapStore.getState();
+      if (state.historyIndex < state.history.length - 1) {
+        redo();
+        toast.success('已重做');
+      } else {
+        toast.info('沒有可重做的操作');
+      }
+    },
+    {
+      enabled,
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      preventDefault: true,
+    }
+  );
+
+  /**
+   * F2: 進入編輯模式
+   */
+  useHotkeys(
+    'f2',
+    (e) => {
+      e.preventDefault();
+
+      if (!selectedNodeId) {
+        toast.error('請先選擇一個 Node');
+        return;
+      }
+
+      const { setEditingNode } = useMindMapStore.getState();
+      setEditingNode(selectedNodeId);
     },
     {
       enabled,
@@ -168,10 +198,7 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
         return;
       }
 
-      updateNode({
-        id: selectedNodeId,
-        data: { isTopic: true },
-      });
+      updateNode(selectedNodeId, { isTopic: true });
 
       toast.success('已設為 Topic');
     },
@@ -184,17 +211,12 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
   );
 
   /**
-   * Tab: 新增子 Node（僅在 RadialView 中）
+   * Tab: 新增子 Node
    */
   useHotkeys(
     'tab',
     (e) => {
       e.preventDefault();
-
-      // 只在 RadialView 中啟用
-      if (currentView !== 'radial') {
-        return;
-      }
 
       if (!selectedNodeId) {
         toast.error('請先選擇一個 Node');
@@ -202,10 +224,7 @@ export function useKeyboardShortcuts(config: ShortcutConfig = {}) {
       }
 
       // 新增為選中 Node 的子節點
-      addNode({
-        label: '子節點',
-        parentId: selectedNodeId,
-      });
+      addNode(selectedNodeId, '子節點');
 
       toast.success('已新增子節點');
     },

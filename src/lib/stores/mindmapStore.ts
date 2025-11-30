@@ -23,6 +23,9 @@ interface MindMapState {
   selectedNodeIds: string[];
   editingNodeId: string | null;
 
+  // 拖曳狀態
+  draggingNodeId: string | null;
+
   // 歷史紀錄（Undo/Redo）
   history: { nodes: MindMapNode[]; edges: MindMapEdge[] }[];
   historyIndex: number;
@@ -41,6 +44,9 @@ interface MindMapActions {
   // 選取操作
   setSelectedNodes: (nodeIds: string[]) => void;
   setEditingNode: (nodeId: string | null) => void;
+
+  // 拖曳操作
+  setDraggingNode: (nodeId: string | null) => void;
 
   // 視圖操作
   setViewport: (viewport: Viewport) => void;
@@ -67,6 +73,7 @@ const initialState: MindMapState = {
   viewMode: 'horizontal',
   selectedNodeIds: [],
   editingNodeId: null,
+  draggingNodeId: null,
   history: [],
   historyIndex: -1,
 };
@@ -190,6 +197,12 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
 
         setEditingNode: (nodeId) => {
           set({ editingNodeId: nodeId });
+        },
+
+        // === 拖曳操作 ===
+
+        setDraggingNode: (nodeId) => {
+          set({ draggingNodeId: nodeId });
         },
 
         // === 視圖操作 ===
