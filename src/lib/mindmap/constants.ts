@@ -1,5 +1,7 @@
+import type { CurveType, LinkType } from './types';
+
 /**
- * 節點預設尺寸
+ * Node default dimensions
  */
 export const NODE_DEFAULTS = {
   WIDTH: 160,
@@ -11,17 +13,16 @@ export const NODE_DEFAULTS = {
 } as const;
 
 /**
- * 佈局預設值
+ * Layout defaults
  */
 export const LAYOUT_DEFAULTS = {
   HORIZONTAL_SPACING: 200,
   VERTICAL_SPACING: 60,
-  RADIAL_RADIUS_BASE: 200,
-  RADIAL_RADIUS_INCREMENT: 150,
+  RADIAL_RADIUS: 300,
 } as const;
 
 /**
- * 縮放限制
+ * Zoom limits
  */
 export const ZOOM_LIMITS = {
   MIN: 0.1,
@@ -30,40 +31,60 @@ export const ZOOM_LIMITS = {
 } as const;
 
 /**
- * 顏色系統
+ * Default link type
+ */
+export const DEFAULT_LINK_TYPE: LinkType = 'horizontal';
+
+/**
+ * Default curve type (for LinePath)
+ */
+export const DEFAULT_CURVE_TYPE: CurveType = 'linear';
+
+/**
+ * Color system
  */
 export const COLORS = {
-  // 主題色
+  // Theme colors
   PRIMARY: '#3B82F6',
   SECONDARY: '#10B981',
 
-  // 節點色
+  // Node colors
   NODE_DEFAULT: '#FFFFFF',
   NODE_TOPIC: '#DBEAFE',
   NODE_BORDER: '#E5E7EB',
   NODE_BORDER_SELECTED: '#3B82F6',
+  NODE_BORDER_HOVER: '#93C5FD',
 
-  // 連線色
-  EDGE_DEFAULT: '#94A3B8',
-  EDGE_COLORS: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+  // Edge color palette
+  EDGE_COLORS: [
+    '#3B82F6', // Blue
+    '#10B981', // Green
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#06B6D4', // Cyan
+    '#F97316', // Orange
+  ],
 
-  // 文字色
+  // Text colors
   TEXT_PRIMARY: '#111827',
   TEXT_SECONDARY: '#6B7280',
+  TEXT_PLACEHOLDER: '#9CA3AF',
 } as const;
 
 /**
- * 動畫時長
+ * Animation settings
  */
 export const ANIMATION = {
   DURATION_FAST: 150,
-  DURATION_NORMAL: 200,
-  DURATION_SLOW: 300,
-  EASING: 'ease-in-out',
+  DURATION_NORMAL: 250,
+  DURATION_SLOW: 400,
+  EASING: 'ease-out',
 } as const;
 
 /**
- * 自動儲存
+ * Auto-save settings
  */
 export const AUTO_SAVE = {
   DEBOUNCE_MS: 2000,
