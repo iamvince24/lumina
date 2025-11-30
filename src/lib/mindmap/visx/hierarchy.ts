@@ -38,7 +38,7 @@ export function flatToTree(
       fontSize: flat.fontSize,
       isTopic: flat.isTopic,
       topicId: flat.topicId,
-      isExpanded: flat.isExpanded,
+      isExpanded: flat.isExpanded ?? true, // Default to true if not specified
       children: children.length > 0 ? children.map(buildNode) : undefined,
       createdAt: flat.createdAt,
       updatedAt: flat.updatedAt,
@@ -73,7 +73,7 @@ export function treeToFlat(
       fontSize: node.fontSize,
       isTopic: node.isTopic,
       topicId: node.topicId,
-      isExpanded: node.isExpanded,
+      isExpanded: node.isExpanded ?? true, // Default to true if not specified
       createdAt: node.createdAt,
       updatedAt: node.updatedAt,
     });

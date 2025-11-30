@@ -9,6 +9,7 @@ import { Group } from '@visx/group';
 import { Tree } from '@visx/hierarchy';
 import type { HierarchyPointLink, HierarchyPointNode } from 'd3-hierarchy';
 import { useMemo } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { MindMapLinks } from './MindMapLinks';
 import { MindMapNodes } from './MindMapNodes';
 
@@ -83,20 +84,26 @@ export function MindMapTree({
     >
       {(tree) => (
         <Group>
-          {/* Connection layer */}
-          <MindMapLinks
-            links={tree.links() as HierarchyPointLink<MindMapNodeData>[]}
-            viewMode={viewMode}
-          />
+          <AnimatePresence mode="sync">
+            {/* Connection layer */}
+            <MindMapLinks
+              key="mindmap-links"
+              links={tree.links() as HierarchyPointLink<MindMapNodeData>[]}
+              viewMode={viewMode}
+            />
 
-          {/* Node layer */}
-          <MindMapNodes
-            nodes={tree.descendants() as HierarchyPointNode<MindMapNodeData>[]}
-            viewMode={viewMode}
-            selectedNodeIds={selectedNodeIds}
-            editingNodeId={editingNodeId}
-            zoom={zoom}
-          />
+            {/* Node layer */}
+            <MindMapNodes
+              key="mindmap-nodes"
+              nodes={
+                tree.descendants() as HierarchyPointNode<MindMapNodeData>[]
+              }
+              viewMode={viewMode}
+              selectedNodeIds={selectedNodeIds}
+              editingNodeId={editingNodeId}
+              zoom={zoom}
+            />
+          </AnimatePresence>
         </Group>
       )}
     </Tree>

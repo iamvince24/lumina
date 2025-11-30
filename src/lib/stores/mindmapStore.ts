@@ -267,7 +267,10 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
 
         loadMindMap: (nodes, edges) => {
           set({
-            nodes,
+            nodes: nodes.map((node) => ({
+              ...node,
+              isExpanded: node.isExpanded ?? true, // Ensure all nodes are expanded by default
+            })),
             edges,
             selectedNodeIds: [],
             editingNodeId: null,

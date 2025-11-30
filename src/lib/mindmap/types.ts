@@ -31,7 +31,7 @@ export interface MindMapNode {
   color?: string;
 
   // 狀態相關
-  isExpanded: boolean;
+  isExpanded?: boolean;
   isTopic: boolean;
   topicId?: string;
 
@@ -50,7 +50,7 @@ export interface MindMapNodeData {
   fontSize?: number;
   isTopic: boolean;
   topicId?: string;
-  isExpanded: boolean;
+  isExpanded?: boolean;
   children?: MindMapNodeData[];
 
   // Metadata
@@ -72,7 +72,7 @@ export interface FlatMindMapNode {
   fontSize?: number;
   isTopic: boolean;
   topicId?: string;
-  isExpanded: boolean;
+  isExpanded?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

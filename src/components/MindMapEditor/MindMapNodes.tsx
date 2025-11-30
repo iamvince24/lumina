@@ -24,6 +24,7 @@ export const MindMapNodes = memo<MindMapNodesProps>(
             isSelected={selectedNodeIds.includes(node.data.id)}
             isEditing={editingNodeId === node.data.id}
             zoom={zoom}
+            allNodes={nodes}
           />
         ))}
       </Group>
