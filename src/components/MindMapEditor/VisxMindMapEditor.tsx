@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Zoom } from '@visx/zoom';
 import { useMindMapStore } from '@/lib/stores/mindmapStore';
 import { MindMapTree } from './MindMapTree';
 import { ZoomControls } from './ZoomControls';
-import { ZOOM_LIMITS } from '@/lib/mindmap/constants';
+import { ZOOM_LIMITS, NODE_DEFAULTS } from '@/lib/mindmap/constants';
+import { useKeyboardShortcuts } from '@/lib/mindmap/hooks/useKeyboardShortcuts';
 
 interface VisxMindMapEditorProps {
   width: number;
@@ -16,6 +17,12 @@ export function VisxMindMapEditor({ width, height }: VisxMindMapEditorProps) {
   // Store
   const { nodes, viewMode, selectedNodeIds, editingNodeId, setSelectedNodes } =
     useMindMapStore();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts();
+
+  // Ghost Node ref for drop indicator (direct DOM manipulation for performance)
+  const ghostNodeRef = useRef<SVGGElement | null>(null);
 
   // Handle canvas click
   const handleCanvasClick = useCallback(
@@ -144,7 +151,26 @@ export function VisxMindMapEditor({ width, height }: VisxMindMapEditorProps) {
                   selectedNodeIds={selectedNodeIds}
                   editingNodeId={editingNodeId}
                   zoom={zoom.transformMatrix.scaleX}
+                  ghostNodeRef={ghostNodeRef}
                 />
+                {/* Ghost Node (Drop Indicator) - Direct DOM manipulation for 60fps */}
+                <g
+                  ref={ghostNodeRef}
+                  id="ghost-indicator"
+                  opacity="0"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  <rect
+                    width={NODE_DEFAULTS.WIDTH}
+                    height={NODE_DEFAULTS.HEIGHT}
+                    rx="4"
+                    ry="4"
+                    fill="#E5E7EB"
+                    stroke="#9CA3AF"
+                    strokeWidth="1"
+                    opacity="0.8"
+                  />
+                </g>
               </g>
             </svg>
 

@@ -19,6 +19,7 @@ interface MindMapTreeProps {
   selectedNodeIds: string[];
   editingNodeId: string | null;
   zoom: number;
+  ghostNodeRef: React.RefObject<SVGGElement | null>;
 }
 
 export function MindMapTree({
@@ -27,6 +28,7 @@ export function MindMapTree({
   selectedNodeIds,
   editingNodeId,
   zoom,
+  ghostNodeRef,
 }: MindMapTreeProps) {
   // Convert flat nodes to tree structure
   const treeData = useMemo(() => flatToTree(nodes), [nodes]);
@@ -102,6 +104,7 @@ export function MindMapTree({
               selectedNodeIds={selectedNodeIds}
               editingNodeId={editingNodeId}
               zoom={zoom}
+              ghostNodeRef={ghostNodeRef}
             />
           </AnimatePresence>
         </Group>

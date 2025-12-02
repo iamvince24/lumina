@@ -3,7 +3,12 @@ import { Group } from '@visx/group';
 import type { HierarchyPointNode } from 'd3-hierarchy';
 import type { MindMapNodeData, ViewMode } from '@/lib/mindmap/types';
 import { useMindMapStore } from '@/lib/stores/mindmapStore';
-import { NODE_DEFAULTS, COLORS, ANIMATION } from '@/lib/mindmap/constants';
+import {
+  NODE_DEFAULTS,
+  COLORS,
+  ANIMATION,
+  LAYOUT_DEFAULTS,
+} from '@/lib/mindmap/constants';
 import { getDepthColor } from '@/lib/mindmap/visx';
 import { throttle } from '@/lib/utils/performance';
 import {
@@ -20,6 +25,7 @@ interface MindMapNodeProps {
   isEditing: boolean;
   zoom: number;
   allNodes: HierarchyPointNode<MindMapNodeData>[];
+  ghostNodeRef: React.RefObject<SVGGElement | null>;
 }
 
 // Custom comparison function for memo to prevent unnecessary re-renders
@@ -75,8 +81,184 @@ function arePropsEqual(
   return true;
 }
 
+// Helper function to update ghost node position (moved outside component to avoid ref access during render)
+function updateGhostNodePosition(
+  finalX: number,
+  finalY: number,
+  allNodesParam: HierarchyPointNode<MindMapNodeData>[],
+  viewModeParam: ViewMode,
+  descendantIds: Set<string>,
+  parentId: string | undefined,
+  ghostRef: React.RefObject<SVGGElement | null>,
+  dropIntent: React.MutableRefObject<{
+    type: 'reparent' | 'reorder' | null;
+    targetId: string | null;
+    position?: 'before' | 'after' | 'child';
+    positionCoords: { x: number; y: number };
+  } | null>
+) {
+  if (!ghostRef.current) return;
+
+  const THRESHOLD = 100;
+  let minDistance = Infinity;
+  let nearestTarget: HierarchyPointNode<MindMapNodeData> | null = null;
+  let ghostPosition: { x: number; y: number } | null = null;
+  let dropType: 'reparent' | 'reorder' = 'reparent';
+  let reorderPosition: 'before' | 'after' | undefined = undefined;
+
+  // Find nearest valid target
+  for (const target of allNodesParam) {
+    if (descendantIds.has(target.data.id) || target.data.id === parentId) {
+      continue;
+    }
+
+    const targetX = viewModeParam === 'horizontal' ? target.y : target.x;
+    const targetY = viewModeParam === 'horizontal' ? target.x : target.y;
+
+    const dist = Math.sqrt(
+      Math.pow(finalX - targetX, 2) + Math.pow(finalY - targetY, 2)
+    );
+
+    if (dist < minDistance && dist < THRESHOLD) {
+      minDistance = dist;
+      nearestTarget = target;
+
+      // Calculate cursor position relative to target node's bounding box
+      const targetWidth = NODE_DEFAULTS.WIDTH;
+      const targetHeight = NODE_DEFAULTS.HEIGHT;
+
+      // Calculate relative position (cursor position relative to target center)
+      // For hit testing, we need to check the cursor position relative to the target's bounding box
+      // relX and relY are relative to target center, so we need to convert to bounding box coordinates
+      const relX = finalX - targetX;
+      const relY = finalY - targetY;
+
+      // Calculate bounding box boundaries (relative to center)
+      const halfWidth = targetWidth / 2;
+      const halfHeight = targetHeight / 2;
+      const topBound = -halfHeight;
+      const bottomBound = halfHeight;
+      const leftBound = -halfWidth;
+      const rightBound = halfWidth;
+
+      // Determine drop zone based on cursor position using three-zone hit testing
+      if (viewModeParam === 'horizontal') {
+        // Horizontal layout: Three zones based on Y position
+        // Zone A (Top 30%): reorder-before
+        // Zone B (Bottom 30%): reorder-after
+        // Zone C (Middle/Right 40%): reparent-child
+
+        const top30Bound = topBound + targetHeight * 0.3;
+        const bottom30Bound = bottomBound - targetHeight * 0.3;
+
+        if (relY <= top30Bound) {
+          // Zone A: Top 30% - Insert before
+          dropType = 'reorder';
+          reorderPosition = 'before';
+          ghostPosition = {
+            x: targetX,
+            y:
+              targetY - targetHeight / 2 - LAYOUT_DEFAULTS.VERTICAL_SPACING / 2,
+          };
+        } else if (relY >= bottom30Bound) {
+          // Zone B: Bottom 30% - Insert after
+          dropType = 'reorder';
+          reorderPosition = 'after';
+          ghostPosition = {
+            x: targetX,
+            y:
+              targetY + targetHeight / 2 + LAYOUT_DEFAULTS.VERTICAL_SPACING / 2,
+          };
+        } else {
+          // Zone C: Middle 40% or Right side - Reparent (become child)
+          dropType = 'reparent';
+          ghostPosition = {
+            x: targetX + targetWidth + LAYOUT_DEFAULTS.HORIZONTAL_SPACING / 2,
+            y: targetY,
+          };
+        }
+      } else {
+        // Vertical layout: Three zones based on X position
+        // Zone A (Left 30%): reorder-before
+        // Zone B (Right 30%): reorder-after
+        // Zone C (Middle/Bottom 40%): reparent-child
+
+        const left30Bound = leftBound + targetWidth * 0.3;
+        const right30Bound = rightBound - targetWidth * 0.3;
+
+        if (relX <= left30Bound) {
+          // Zone A: Left 30% - Insert before
+          dropType = 'reorder';
+          reorderPosition = 'before';
+          ghostPosition = {
+            x:
+              targetX -
+              targetWidth / 2 -
+              LAYOUT_DEFAULTS.HORIZONTAL_SPACING / 2,
+            y: targetY,
+          };
+        } else if (relX >= right30Bound) {
+          // Zone B: Right 30% - Insert after
+          dropType = 'reorder';
+          reorderPosition = 'after';
+          ghostPosition = {
+            x:
+              targetX +
+              targetWidth / 2 +
+              LAYOUT_DEFAULTS.HORIZONTAL_SPACING / 2,
+            y: targetY,
+          };
+        } else {
+          // Zone C: Middle 40% or Bottom side - Reparent (become child)
+          dropType = 'reparent';
+          ghostPosition = {
+            x: targetX,
+            y: targetY + targetHeight + LAYOUT_DEFAULTS.VERTICAL_SPACING / 2,
+          };
+        }
+      }
+    }
+  }
+
+  // Update Ghost Node DOM directly (zero React state updates)
+  if (nearestTarget && ghostPosition && ghostRef.current) {
+    // Store drop intent for use on drop
+    dropIntent.current = {
+      type: dropType,
+      targetId: nearestTarget.data.id,
+      position: reorderPosition,
+      positionCoords: ghostPosition,
+    };
+
+    // Position ghost node (center it on the calculated position)
+    ghostRef.current.setAttribute(
+      'transform',
+      `translate(${ghostPosition.x - NODE_DEFAULTS.WIDTH / 2}, ${ghostPosition.y - NODE_DEFAULTS.HEIGHT / 2})`
+    );
+    ghostRef.current.setAttribute('opacity', '0.8');
+    ghostRef.current.setAttribute(
+      'style',
+      'pointer-events: none; transition: transform 0.1s ease-out;'
+    );
+
+    // Update the rect element inside the ghost group
+    const rectElement = ghostRef.current.querySelector('rect');
+    if (rectElement) {
+      rectElement.setAttribute('fill', '#E5E7EB');
+      rectElement.setAttribute('rx', '4');
+      rectElement.setAttribute('ry', '4');
+    }
+  } else {
+    // Hide ghost node if no valid target
+    dropIntent.current = null;
+    if (ghostRef.current) {
+      ghostRef.current.setAttribute('opacity', '0');
+    }
+  }
+}
+
 export const MindMapNode = memo<MindMapNodeProps>(
-  ({ node, viewMode, isSelected, isEditing, allNodes, zoom }) => {
+  ({ node, viewMode, isSelected, isEditing, allNodes, zoom, ghostNodeRef }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const nodeGroupRef = useRef<SVGGElement>(null);
     const [isHovered, setIsHovered] = useState(false);
@@ -84,6 +266,14 @@ export const MindMapNode = memo<MindMapNodeProps>(
     const [potentialTargetIds, setPotentialTargetIds] = useState<string[]>([]);
     const isDraggingRef = useRef(false);
     const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+
+    // Drop intent: stores where the node will be dropped if released now
+    const dropIntentRef = useRef<{
+      type: 'reparent' | 'reorder' | null;
+      targetId: string | null;
+      position?: 'before' | 'after' | 'child';
+      positionCoords: { x: number; y: number };
+    } | null>(null);
 
     // Optimize Zustand subscriptions - use individual selectors to prevent unnecessary re-renders
     const selectedNodeIds = useMindMapStore((state) => state.selectedNodeIds);
@@ -231,6 +421,12 @@ export const MindMapNode = memo<MindMapNodeProps>(
         isDraggingRef.current = true;
         setDraggingNode(node.data.id);
         setPotentialTargetIds([]);
+        dropIntentRef.current = null;
+
+        // Hide ghost node initially
+        if (ghostNodeRef.current) {
+          ghostNodeRef.current.setAttribute('opacity', '0');
+        }
 
         // Store initial mouse position in screen coordinates
         dragStartMouseRef.current = { x: event.clientX, y: event.clientY };
@@ -240,7 +436,15 @@ export const MindMapNode = memo<MindMapNodeProps>(
         const startY = viewMode === 'horizontal' ? node.x : node.y;
         dragStartPositionRef.current = { x: startX ?? 0, y: startY ?? 0 };
       },
-      [node.data.id, node.x, node.y, viewMode, setDraggingNode, isEditing]
+      [
+        node.data.id,
+        node.x,
+        node.y,
+        viewMode,
+        setDraggingNode,
+        isEditing,
+        ghostNodeRef,
+      ]
     );
 
     // Use ref to store descendants to avoid recalculating on every drag move
@@ -304,6 +508,14 @@ export const MindMapNode = memo<MindMapNodeProps>(
       []
     );
 
+    // Throttled Ghost Node position update handler
+    // This calculates where the ghost node should appear and updates it directly via DOM
+    // Note: Using helper function outside component to avoid ref access during render
+    const updateGhostNodeThrottled = useMemo(
+      () => throttle(updateGhostNodePosition, 50), // Update ghost position every 50ms (throttled for performance)
+      []
+    );
+
     const handleDragEnd = useCallback(
       (event: React.MouseEvent) => {
         event.stopPropagation();
@@ -317,6 +529,11 @@ export const MindMapNode = memo<MindMapNodeProps>(
         }
 
         isDraggingRef.current = false;
+
+        // Hide ghost node
+        if (ghostNodeRef.current) {
+          ghostNodeRef.current.setAttribute('opacity', '0');
+        }
 
         // Get final position from DOM (single source of truth)
         const transform = nodeGroupRef.current.getAttribute('transform');
@@ -341,12 +558,6 @@ export const MindMapNode = memo<MindMapNodeProps>(
 
         const dx = finalX - dragStartPositionRef.current.x;
         const dy = finalY - dragStartPositionRef.current.y;
-
-        // Clear dragging state
-        setDraggingNode(null);
-        setPotentialTargetIds([]);
-        dragStartPositionRef.current = null;
-        dragStartMouseRef.current = null;
 
         // Calculate original position
         const originalX = viewMode === 'horizontal' ? node.y : node.x;
@@ -405,10 +616,38 @@ export const MindMapNode = memo<MindMapNodeProps>(
           }
         });
 
+        // Use drop intent if available (from Ghost Node calculation), otherwise fall back to nearest node
+        const dropIntent = dropIntentRef.current;
+        const targetId = dropIntent?.targetId || nearestNodeId;
+
         // Sync final position to store only on dragEnd
         // The layout will recalculate positions, so we don't need to update position here
-        if (nearestNodeId) {
-          updateNode(node.data.id, { parentId: nearestNodeId });
+        if (dropIntent && dropIntent.targetId) {
+          // Handle both reorder and reparent using moveNode
+          const moveNode = useMindMapStore.getState().moveNode;
+          if (moveNode) {
+            // Determine the position parameter for moveNode
+            let movePosition: 'before' | 'after' | 'child';
+            if (dropIntent.type === 'reorder' && dropIntent.position) {
+              // Reorder: use the position from dropIntent
+              movePosition = dropIntent.position;
+            } else if (dropIntent.type === 'reparent') {
+              // Reparent: use 'child'
+              movePosition = 'child';
+            } else {
+              // Fallback: use 'child' for reparenting
+              movePosition = 'child';
+            }
+            moveNode(node.data.id, dropIntent.targetId, movePosition);
+          } else {
+            // Fallback: if moveNode doesn't exist, use reparent logic
+            if (targetId) {
+              updateNode(node.data.id, { parentId: targetId });
+            }
+          }
+        } else if (targetId) {
+          // Handle reparenting (existing logic) - fallback when no dropIntent
+          updateNode(node.data.id, { parentId: targetId });
         } else {
           // Reset position if no valid target found
           nodeGroupRef.current.setAttribute(
@@ -416,8 +655,24 @@ export const MindMapNode = memo<MindMapNodeProps>(
             `translate(${(originalX ?? 0) - width / 2}, ${(originalY ?? 0) - height / 2})`
           );
         }
+
+        // Clear dragging state
+        setDraggingNode(null);
+        setPotentialTargetIds([]);
+        dragStartPositionRef.current = null;
+        dragStartMouseRef.current = null;
+        dropIntentRef.current = null;
       },
-      [node, allNodes, updateNode, viewMode, setDraggingNode, width, height]
+      [
+        node,
+        allNodes,
+        updateNode,
+        viewMode,
+        setDraggingNode,
+        width,
+        height,
+        ghostNodeRef,
+      ]
     );
 
     // Determine if node has children (for expand/collapse button)
@@ -498,6 +753,18 @@ export const MindMapNode = memo<MindMapNodeProps>(
           descendantsRef.current,
           node.parent?.data.id
         );
+
+        // Update Ghost Node position (throttled, direct DOM manipulation)
+        updateGhostNodeThrottled(
+          finalX,
+          finalY,
+          allNodes,
+          viewMode,
+          descendantsRef.current,
+          node.parent?.data.id,
+          ghostNodeRef,
+          dropIntentRef
+        );
       };
 
       const handleGlobalMouseUp = (event: MouseEvent) => {
@@ -536,7 +803,9 @@ export const MindMapNode = memo<MindMapNodeProps>(
       viewMode,
       node.parent?.data.id,
       handleDragMoveThrottled,
+      updateGhostNodeThrottled,
       handleDragEnd,
+      ghostNodeRef,
     ]);
 
     // Initialize position on mount - use ref to track if initialized

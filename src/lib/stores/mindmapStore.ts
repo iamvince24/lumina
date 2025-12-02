@@ -36,6 +36,11 @@ interface MindMapActions {
   addNode: (parentId: string | null, label?: string) => string;
   updateNode: (nodeId: string, updates: Partial<MindMapNode>) => void;
   deleteNode: (nodeId: string) => void;
+  moveNode: (
+    nodeId: string,
+    targetId: string,
+    position: 'before' | 'after' | 'child'
+  ) => void;
 
   // 連線操作
   addEdge: (sourceId: string, targetId: string) => void;
@@ -166,6 +171,88 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
             );
           });
 
+          get().saveToHistory();
+        },
+
+        moveNode: (nodeId, targetId, position) => {
+          set((state) => {
+            const nodeToMove = state.nodes.find(
+              (n: MindMapNode) => n.id === nodeId
+            );
+            const targetNode = state.nodes.find(
+              (n: MindMapNode) => n.id === targetId
+            );
+
+            if (!nodeToMove || !targetNode) return;
+
+            if (position === 'child') {
+              // Reparent: Make nodeToMove a child of targetNode
+              nodeToMove.parentId = targetId;
+              nodeToMove.updatedAt = new Date();
+            } else {
+              // Reorder: Make nodeToMove a sibling of targetNode
+              // Get target's parent (siblings share the same parent)
+              const targetParentId = targetNode.parentId;
+
+              // Update the moved node's parent to match target's parent
+              // This makes them siblings
+              nodeToMove.parentId = targetParentId;
+              nodeToMove.updatedAt = new Date();
+
+              // For sibling reordering, we need to control the order of siblings
+              // Since the layout algorithm processes nodes in array order when building the tree,
+              // we need to reorder the nodes array to reflect the desired position.
+
+              // Get all siblings (nodes with the same parentId as target, including target and nodeToMove)
+              const siblings = state.nodes.filter(
+                (n: MindMapNode) => n.parentId === targetParentId
+              );
+
+              // Remove nodeToMove from siblings array temporarily
+              const siblingsWithoutMoved = siblings.filter(
+                (n: MindMapNode) => n.id !== nodeId
+              );
+
+              // Find target's index in siblings (without moved node)
+              const targetIndex = siblingsWithoutMoved.findIndex(
+                (n: MindMapNode) => n.id === targetId
+              );
+
+              if (targetIndex === -1) return;
+
+              // Calculate insertion index based on position
+              const insertIndex =
+                position === 'before' ? targetIndex : targetIndex + 1;
+
+              // Rebuild siblings array with nodeToMove in the correct position
+              const newSiblings = [
+                ...siblingsWithoutMoved.slice(0, insertIndex),
+                nodeToMove,
+                ...siblingsWithoutMoved.slice(insertIndex),
+              ];
+
+              // Reorder the nodes array: place all siblings in the correct order
+              // We'll do this by finding the first sibling's position and replacing the section
+              const firstSiblingIndex = state.nodes.findIndex(
+                (n: MindMapNode) => n.parentId === targetParentId
+              );
+
+              if (firstSiblingIndex !== -1) {
+                // Remove all siblings from the array
+                for (let i = state.nodes.length - 1; i >= 0; i--) {
+                  if (state.nodes[i].parentId === targetParentId) {
+                    state.nodes.splice(i, 1);
+                  }
+                }
+
+                // Insert all siblings in the correct order at the original position
+                state.nodes.splice(firstSiblingIndex, 0, ...newSiblings);
+              }
+            }
+          });
+
+          // Recalculate layout to reflect the new position
+          get().applyLayout();
           get().saveToHistory();
         },
 

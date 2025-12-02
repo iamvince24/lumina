@@ -10,10 +10,11 @@ interface MindMapNodesProps {
   selectedNodeIds: string[];
   editingNodeId: string | null;
   zoom: number;
+  ghostNodeRef: React.RefObject<SVGGElement | null>;
 }
 
 export const MindMapNodes = memo<MindMapNodesProps>(
-  ({ nodes, viewMode, selectedNodeIds, editingNodeId, zoom }) => {
+  ({ nodes, viewMode, selectedNodeIds, editingNodeId, zoom, ghostNodeRef }) => {
     return (
       <Group className="nodes-layer">
         {nodes.map((node) => (
@@ -25,6 +26,7 @@ export const MindMapNodes = memo<MindMapNodesProps>(
             isEditing={editingNodeId === node.data.id}
             zoom={zoom}
             allNodes={nodes}
+            ghostNodeRef={ghostNodeRef}
           />
         ))}
       </Group>
