@@ -924,16 +924,18 @@ export const MindMapNode = memo<MindMapNodeProps>(
             </text>
           )}
 
-          {/* Expand/collapse toggle button */}
+          {/* Expand/collapse toggle button - positioned outside node on the right */}
           {hasChildren && (
             <Group
-              transform={`translate(${width - 16}, ${height / 2})`}
+              transform={`translate(${width + 12}, ${height / 2})`}
               className="expand-button"
+              aria-hidden="true"
             >
               <MotionCircle
                 r={8}
                 fill={COLORS.NODE_BORDER}
                 style={{ cursor: 'pointer' }}
+                tabIndex={-1}
                 onClick={(e) => {
                   e.stopPropagation();
                   updateNode(node.data.id, {
@@ -941,6 +943,7 @@ export const MindMapNode = memo<MindMapNodeProps>(
                   });
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
+                onFocus={(e) => e.preventDefault()}
                 whileHover={{ scale: 1.1, fill: COLORS.NODE_BORDER_HOVER }}
                 whileTap={{ scale: 0.95 }}
               />

@@ -17,10 +17,17 @@ export const MindMapLink = memo<MindMapLinkProps>(
 
     // Calculate connection path start and end points
     // visx Tree coordinates: x is vertical direction, y is horizontal direction
-    // We need to swap x and y, considering node width
+    // For horizontal mode, the source X is extended to account for the expand button
+    // which is positioned 12px to the right of the node, plus 8px for button radius
+    const EXPAND_BUTTON_OFFSET = 20; // 12px position + 8px radius
+
     const sourceX = useMemo(() => {
       if (viewMode === 'horizontal') {
-        return (link.source.y ?? 0) + NODE_DEFAULTS.WIDTH / 2;
+        // Check if source node has children (expand button is displayed)
+        const hasChildren =
+          link.source.data.children && link.source.data.children.length > 0;
+        const buttonOffset = hasChildren ? EXPAND_BUTTON_OFFSET : 0;
+        return (link.source.y ?? 0) + NODE_DEFAULTS.WIDTH / 2 + buttonOffset;
       }
       return link.source.x ?? 0;
     }, [link.source, viewMode]);
