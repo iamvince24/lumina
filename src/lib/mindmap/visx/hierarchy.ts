@@ -39,6 +39,7 @@ export function flatToTree(
       isTopic: flat.isTopic,
       topicId: flat.topicId,
       isExpanded: flat.isExpanded ?? true, // Default to true if not specified
+      width: flat.width, // Pass width for dynamic node sizing
       children: children.length > 0 ? children.map(buildNode) : undefined,
       createdAt: flat.createdAt,
       updatedAt: flat.updatedAt,

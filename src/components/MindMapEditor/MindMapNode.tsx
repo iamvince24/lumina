@@ -32,13 +32,14 @@ function arePropsEqual(
   prevProps: MindMapNodeProps,
   nextProps: MindMapNodeProps
 ): boolean {
-  // Check if node data changed
+  // Check if node data changed (including width)
   if (
     prevProps.node.data.id !== nextProps.node.data.id ||
     prevProps.node.data.label !== nextProps.node.data.label ||
     prevProps.node.data.isExpanded !== nextProps.node.data.isExpanded ||
     prevProps.node.data.color !== nextProps.node.data.color ||
-    prevProps.node.data.isTopic !== nextProps.node.data.isTopic
+    prevProps.node.data.isTopic !== nextProps.node.data.isTopic ||
+    prevProps.node.data.width !== nextProps.node.data.width
   ) {
     return false;
   }
@@ -49,6 +50,17 @@ function arePropsEqual(
     prevProps.node.y !== nextProps.node.y
   ) {
     return false;
+  }
+
+  // Check if any ancestor width changed (affects position offset)
+  let prevAncestor = prevProps.node.parent;
+  let nextAncestor = nextProps.node.parent;
+  while (prevAncestor && nextAncestor) {
+    if (prevAncestor.data.width !== nextAncestor.data.width) {
+      return false;
+    }
+    prevAncestor = prevAncestor.parent;
+    nextAncestor = nextAncestor.parent;
   }
 
   // Check if selection/editing state changed
@@ -281,22 +293,49 @@ export const MindMapNode = memo<MindMapNodeProps>(
     const updateNode = useMindMapStore((state) => state.updateNode);
     const deleteNode = useMindMapStore((state) => state.deleteNode);
     const setDraggingNode = useMindMapStore((state) => state.setDraggingNode);
+    const applyLayout = useMindMapStore((state) => state.applyLayout);
     // Only subscribe to draggingNodeId if this node is the one being dragged
     const draggingNodeId = useMindMapStore((state) => state.draggingNodeId);
 
     // Calculate node position (visx Tree x/y are swapped)
-    const nodeX = viewMode === 'horizontal' ? node.y : node.x;
+    // For horizontal layout: node.y is X (horizontal), node.x is Y (vertical)
+    const baseNodeX = viewMode === 'horizontal' ? node.y : node.x;
     const nodeY = viewMode === 'horizontal' ? node.x : node.y;
 
+    // Calculate cumulative ancestor width offset
+    // visx Tree uses fixed NODE_DEFAULTS.WIDTH for spacing calculations
+    // We need to compensate for ancestors with larger actual widths
+    let ancestorWidthOffset = 0;
+    if (viewMode === 'horizontal') {
+      let currentNode = node.parent;
+      while (currentNode) {
+        const ancestorActualWidth =
+          currentNode.data.width ?? NODE_DEFAULTS.WIDTH;
+        const widthDifference = ancestorActualWidth - NODE_DEFAULTS.WIDTH;
+        if (widthDifference > 0) {
+          ancestorWidthOffset += widthDifference;
+        }
+        currentNode = currentNode.parent;
+      }
+    }
+
+    // Apply the cumulative offset to position
+    const nodeX = (baseNodeX ?? 0) + ancestorWidthOffset;
+
     // Node styling - calculate width based on text content
+    // During editing, use inputValue; otherwise use label
     // Estimate approximately 8px per character + padding
+    const textToMeasure = isEditing ? inputValue : node.data.label || '';
     const estimatedTextWidth =
-      (node.data.label?.length || 0) * 8 + NODE_DEFAULTS.PADDING * 4;
+      (textToMeasure.length || 0) * 8 + NODE_DEFAULTS.PADDING * 4;
     const width = Math.max(
       NODE_DEFAULTS.MIN_WIDTH,
       Math.min(NODE_DEFAULTS.MAX_WIDTH, estimatedTextWidth)
     );
     const height = NODE_DEFAULTS.HEIGHT;
+
+    // Track previous width to detect changes
+    const prevWidthRef = useRef(width);
     const borderRadius = NODE_DEFAULTS.BORDER_RADIUS;
 
     // Node styling - transparent by default, only show border when selected
@@ -343,6 +382,27 @@ export const MindMapNode = memo<MindMapNodeProps>(
         inputRef.current.select();
       }
     }, [isEditing]);
+
+    // Update node width and layout when width changes during editing
+    // This ensures child nodes are offset correctly when text expands
+    useEffect(() => {
+      // Only process width changes during editing
+      if (!isEditing) {
+        prevWidthRef.current = width;
+        return;
+      }
+
+      // Check if width actually changed significantly
+      if (Math.abs(prevWidthRef.current - width) > 5) {
+        prevWidthRef.current = width;
+        // Update node width in store and recalculate layout
+        updateNode(node.data.id, { width });
+        // Trigger layout recalculation to offset children
+        queueMicrotask(() => {
+          applyLayout();
+        });
+      }
+    }, [isEditing, width, node.data.id, updateNode, applyLayout]);
 
     // Event handlers
     const handleClick = useCallback(
@@ -946,18 +1006,33 @@ export const MindMapNode = memo<MindMapNodeProps>(
               </div>
             </foreignObject>
           ) : (
-            <text
-              x={width / 2}
-              y={height / 2}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill={COLORS.TEXT_PRIMARY}
-              fontSize={node.data.fontSize || 14}
-              fontFamily="Inter, system-ui, sans-serif"
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            <foreignObject
+              x={NODE_DEFAULTS.PADDING}
+              y={0}
+              width={width - NODE_DEFAULTS.PADDING * 2}
+              height={height}
             >
-              {node.data.label || 'Untitled'}
-            </text>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: node.data.fontSize || 14,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  color: COLORS.TEXT_PRIMARY,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+                title={node.data.label || 'Untitled'}
+              >
+                {node.data.label || 'Untitled'}
+              </div>
+            </foreignObject>
           )}
 
           {/* Expand/collapse toggle button - positioned outside node on the right */}

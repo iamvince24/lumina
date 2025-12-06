@@ -51,6 +51,7 @@ export interface MindMapNodeData {
   isTopic: boolean;
   topicId?: string;
   isExpanded?: boolean;
+  width?: number; // Node width for dynamic sizing
   children?: MindMapNodeData[];
 
   // Metadata

@@ -1,6 +1,6 @@
 import type { MindMapNode, LayoutConfig, Point } from '../types';
 import { LAYOUT_DEFAULTS, NODE_DEFAULTS } from '../constants';
-import { getChildNodes, getRootNode, buildTree, type TreeNode } from './tree';
+import { getRootNode, buildTree, type TreeNode } from './tree';
 
 /**
  * 水平樹狀佈局（向右展開）
@@ -32,7 +32,10 @@ export function calculateHorizontalTreeLayout(
       return subtreeHeights.get(nodeId)!;
     }
 
-    const children = getChildNodes(nodes, nodeId);
+    // Get children from nodeMap to ensure consistency with setPositions
+    const children = Array.from(nodeMap.values()).filter(
+      (n) => n.parentId === nodeId
+    );
 
     if (children.length === 0) {
       subtreeHeights.set(nodeId, nodeHeight);
@@ -57,17 +60,24 @@ export function calculateHorizontalTreeLayout(
 
     node.position = { x, y };
 
-    const children = getChildNodes(nodes, nodeId);
+    // Get children from nodeMap to ensure we have the latest width values
+    const children = Array.from(nodeMap.values()).filter(
+      (n) => n.parentId === nodeId
+    );
     if (children.length === 0) return;
 
     const subtreeHeight = subtreeHeights.get(nodeId) || 0;
     let currentY = y - subtreeHeight / 2 + nodeHeight / 2;
 
+    // Use the current node's actual width for child positioning
+    const currentNodeWidth = node.width || nodeWidth;
+
     for (const child of children) {
       const childSubtreeHeight = subtreeHeights.get(child.id) || nodeHeight;
       const childY = currentY + childSubtreeHeight / 2 - nodeHeight / 2;
 
-      setPositions(child.id, x + nodeWidth + horizontalSpacing, childY);
+      // Position children based on parent's actual width
+      setPositions(child.id, x + currentNodeWidth + horizontalSpacing, childY);
 
       currentY += childSubtreeHeight + verticalSpacing;
     }

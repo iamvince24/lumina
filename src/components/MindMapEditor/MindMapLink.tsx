@@ -21,13 +21,43 @@ export const MindMapLink = memo<MindMapLinkProps>(
     // which is positioned 12px to the right of the node, plus 8px for button radius
     const EXPAND_BUTTON_OFFSET = 20; // 12px position + 8px radius
 
+    // Helper function to calculate cumulative ancestor width offset
+    const getAncestorWidthOffset = (node: typeof link.source): number => {
+      if (viewMode !== 'horizontal') return 0;
+
+      let offset = 0;
+      let currentNode = node.parent;
+      while (currentNode) {
+        const ancestorActualWidth =
+          currentNode.data.width ?? NODE_DEFAULTS.WIDTH;
+        const widthDifference = ancestorActualWidth - NODE_DEFAULTS.WIDTH;
+        if (widthDifference > 0) {
+          offset += widthDifference;
+        }
+        currentNode = currentNode.parent;
+      }
+      return offset;
+    };
+
     const sourceX = useMemo(() => {
       if (viewMode === 'horizontal') {
         // Check if source node has children (expand button is displayed)
         const hasChildren =
           link.source.data.children && link.source.data.children.length > 0;
         const buttonOffset = hasChildren ? EXPAND_BUTTON_OFFSET : 0;
-        return (link.source.y ?? 0) + NODE_DEFAULTS.WIDTH / 2 + buttonOffset;
+
+        // Get the source node's actual width
+        const sourceNodeWidth = link.source.data.width ?? NODE_DEFAULTS.WIDTH;
+
+        // Calculate cumulative ancestor offset for source node
+        const ancestorOffset = getAncestorWidthOffset(link.source);
+
+        return (
+          (link.source.y ?? 0) +
+          ancestorOffset +
+          sourceNodeWidth / 2 +
+          buttonOffset
+        );
       }
       return link.source.x ?? 0;
     }, [link.source, viewMode]);
@@ -41,7 +71,13 @@ export const MindMapLink = memo<MindMapLinkProps>(
 
     const targetX = useMemo(() => {
       if (viewMode === 'horizontal') {
-        return (link.target.y ?? 0) - NODE_DEFAULTS.WIDTH / 2;
+        // Calculate cumulative ancestor offset for target node
+        const ancestorOffset = getAncestorWidthOffset(link.target);
+
+        // Get the target node's actual width
+        const targetNodeWidth = link.target.data.width ?? NODE_DEFAULTS.WIDTH;
+
+        return (link.target.y ?? 0) + ancestorOffset - targetNodeWidth / 2;
       }
       return link.target.x ?? 0;
     }, [link.target, viewMode]);
