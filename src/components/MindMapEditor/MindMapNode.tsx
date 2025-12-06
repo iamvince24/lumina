@@ -279,6 +279,7 @@ export const MindMapNode = memo<MindMapNodeProps>(
     const setSelectedNodes = useMindMapStore((state) => state.setSelectedNodes);
     const setEditingNode = useMindMapStore((state) => state.setEditingNode);
     const updateNode = useMindMapStore((state) => state.updateNode);
+    const deleteNode = useMindMapStore((state) => state.deleteNode);
     const setDraggingNode = useMindMapStore((state) => state.setDraggingNode);
     // Only subscribe to draggingNodeId if this node is the one being dragged
     const draggingNodeId = useMindMapStore((state) => state.draggingNodeId);
@@ -287,8 +288,14 @@ export const MindMapNode = memo<MindMapNodeProps>(
     const nodeX = viewMode === 'horizontal' ? node.y : node.x;
     const nodeY = viewMode === 'horizontal' ? node.x : node.y;
 
-    // Node styling
-    const width = NODE_DEFAULTS.WIDTH;
+    // Node styling - calculate width based on text content
+    // Estimate approximately 8px per character + padding
+    const estimatedTextWidth =
+      (node.data.label?.length || 0) * 8 + NODE_DEFAULTS.PADDING * 4;
+    const width = Math.max(
+      NODE_DEFAULTS.MIN_WIDTH,
+      Math.min(NODE_DEFAULTS.MAX_WIDTH, estimatedTextWidth)
+    );
     const height = NODE_DEFAULTS.HEIGHT;
     const borderRadius = NODE_DEFAULTS.BORDER_RADIUS;
 
@@ -378,21 +385,50 @@ export const MindMapNode = memo<MindMapNodeProps>(
       (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          updateNode(node.data.id, { label: inputValue });
+          // If content is empty, delete the node
+          if (!inputValue.trim()) {
+            deleteNode(node.data.id);
+          } else {
+            updateNode(node.data.id, { label: inputValue });
+          }
           setEditingNode(null);
         } else if (e.key === 'Escape') {
           e.preventDefault();
-          setInputValue(node.data.label);
+          // If original label and current input are both empty, delete the node
+          if (!node.data.label && !inputValue.trim()) {
+            deleteNode(node.data.id);
+          } else {
+            setInputValue(node.data.label);
+          }
           setEditingNode(null);
         }
       },
-      [node.data.id, node.data.label, inputValue, updateNode, setEditingNode]
+      [
+        node.data.id,
+        node.data.label,
+        inputValue,
+        updateNode,
+        deleteNode,
+        setEditingNode,
+      ]
     );
 
     const handleInputBlur = useCallback(() => {
-      updateNode(node.data.id, { label: inputValue });
+      // If content is empty, delete the node
+      if (!inputValue.trim() && !node.data.label) {
+        deleteNode(node.data.id);
+      } else {
+        updateNode(node.data.id, { label: inputValue });
+      }
       setEditingNode(null);
-    }, [node.data.id, inputValue, updateNode, setEditingNode]);
+    }, [
+      node.data.id,
+      node.data.label,
+      inputValue,
+      updateNode,
+      deleteNode,
+      setEditingNode,
+    ]);
 
     // Store initial mouse position and node position for drag calculations
     const dragStartMouseRef = useRef<{ x: number; y: number } | null>(null);

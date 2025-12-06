@@ -95,7 +95,7 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
 
         // === 節點操作 ===
 
-        addNode: (parentId, label = '新節點', afterNodeId) => {
+        addNode: (parentId, label = '', afterNodeId) => {
           const id = crypto.randomUUID();
 
           set((state) => {
