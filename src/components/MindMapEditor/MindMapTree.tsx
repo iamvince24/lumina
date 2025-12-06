@@ -31,6 +31,7 @@ export function MindMapTree({
   ghostNodeRef,
 }: MindMapTreeProps) {
   // Convert flat nodes to tree structure
+  // Use nodes.length as part of the dependency to force re-calculation when nodes change
   const treeData = useMemo(() => flatToTree(nodes), [nodes]);
 
   // Create visx hierarchy

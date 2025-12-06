@@ -33,7 +33,11 @@ interface MindMapState {
 
 interface MindMapActions {
   // 節點操作
-  addNode: (parentId: string | null, label?: string) => string;
+  addNode: (
+    parentId: string | null,
+    label?: string,
+    afterNodeId?: string
+  ) => string;
   updateNode: (nodeId: string, updates: Partial<MindMapNode>) => void;
   deleteNode: (nodeId: string) => void;
   moveNode: (
@@ -91,7 +95,7 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
 
         // === 節點操作 ===
 
-        addNode: (parentId, label = '新節點') => {
+        addNode: (parentId, label = '新節點', afterNodeId) => {
           const id = crypto.randomUUID();
 
           set((state) => {
@@ -108,7 +112,19 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
               updatedAt: new Date(),
             };
 
-            state.nodes.push(newNode);
+            // 如果指定了 afterNodeId，插入到該節點之後
+            if (afterNodeId) {
+              const afterIndex = state.nodes.findIndex(
+                (n: MindMapNode) => n.id === afterNodeId
+              );
+              if (afterIndex !== -1) {
+                state.nodes.splice(afterIndex + 1, 0, newNode);
+              } else {
+                state.nodes.push(newNode);
+              }
+            } else {
+              state.nodes.push(newNode);
+            }
 
             // 如果有父節點，建立連線
             if (parentId) {
@@ -121,11 +137,18 @@ export const useMindMapStore = create<MindMapState & MindMapActions>()(
 
             // 自動選取新節點
             state.selectedNodeIds = [id];
-            state.editingNodeId = id;
+            // 延遲設置編輯模式，讓 React 先完成位置更新
+            state.editingNodeId = null;
           });
 
           // 套用佈局
           get().applyLayout();
+
+          // 延遲進入編輯模式，確保佈局已更新
+          setTimeout(() => {
+            set({ editingNodeId: id });
+          }, 100);
+
           get().saveToHistory();
 
           return id;

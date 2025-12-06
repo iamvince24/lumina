@@ -158,17 +158,21 @@ export const useKeyboardShortcuts = () => {
       if (!node) return;
 
       let parentId: string | null;
+      let afterNodeId: string | undefined;
 
       // 如果是根節點，添加子節點
       if (node.parentId === null) {
         parentId = selectedId;
+        // 子節點插入到最後
+        afterNodeId = undefined;
       } else {
-        // 否則添加兄弟節點
+        // 否則添加兄弟節點，插入到當前節點之後
         parentId = node.parentId;
+        afterNodeId = selectedId;
       }
 
       // addNode 會自動選取新節點並設置為編輯模式
-      addNode(parentId);
+      addNode(parentId, '新節點', afterNodeId);
     },
     [selectedNodeIds, nodes, addNode]
   );
