@@ -9,7 +9,6 @@ import {
   ANIMATION,
   LAYOUT_DEFAULTS,
 } from '@/lib/mindmap/constants';
-import { getDepthColor } from '@/lib/mindmap/visx';
 import { throttle } from '@/lib/utils/performance';
 import {
   MotionGroup,
@@ -293,27 +292,19 @@ export const MindMapNode = memo<MindMapNodeProps>(
     const height = NODE_DEFAULTS.HEIGHT;
     const borderRadius = NODE_DEFAULTS.BORDER_RADIUS;
 
-    const fillColor =
-      node.data.color ||
-      (node.data.isTopic ? COLORS.NODE_TOPIC : COLORS.NODE_DEFAULT);
+    // Node styling - transparent by default, only show border when selected
+    const fillColor = 'transparent';
     const borderColor = potentialTargetIds.includes(node.data.id)
       ? '#3B82F6' // 藍色高亮
       : isSelected
         ? COLORS.NODE_BORDER_SELECTED
-        : isHovered
-          ? COLORS.NODE_BORDER_HOVER
-          : COLORS.NODE_BORDER;
+        : 'transparent';
     const borderWidth = potentialTargetIds.includes(node.data.id)
       ? 3
       : isSelected
         ? 2
-        : 1;
-    const filter = isSelected
-      ? 'url(#node-shadow-selected)'
-      : 'url(#node-shadow)';
-
-    // Connection color based on depth
-    const depthColor = getDepthColor(node.depth);
+        : 0;
+    const filter = isSelected ? 'url(#node-shadow-selected)' : 'none';
 
     // Track previous values to detect changes
     const prevIsEditingRef = useRef(isEditing);
@@ -878,30 +869,8 @@ export const MindMapNode = memo<MindMapNodeProps>(
             }}
           />
 
-          {/* Depth color indicator */}
-          <MotionRect
-            x={0}
-            y={0}
-            width={4}
-            height={height}
-            rx={2}
-            fill={depthColor}
-            animate={{ fill: depthColor }}
-            transition={{ duration: ANIMATION.DURATION_FAST / 1000 }}
-          />
-
-          {/* Topic marker */}
-          {node.data.isTopic && (
-            <MotionCircle
-              cx={width - 10}
-              cy={10}
-              r={4}
-              fill={COLORS.PRIMARY}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.1 }}
-            />
-          )}
+          {/* Depth color indicator - hidden for minimal design */}
+          {/* Topic marker - hidden for minimal design */}
 
           {/* Node content */}
           {isEditing ? (
