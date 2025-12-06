@@ -1,0 +1,83 @@
+'use client';
+
+import React from 'react';
+
+interface EditorToolbarProps {
+  onAddNode: () => void;
+  onAutoLayout: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
+  onExport: () => void;
+  zoom: number;
+}
+
+export const EditorToolbar: React.FC<EditorToolbarProps> = ({
+  onAddNode,
+  onAutoLayout,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+  onExport,
+  zoom,
+}) => {
+  return (
+    <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-2 flex gap-2 z-10">
+      <button
+        onClick={onAddNode}
+        className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+        title="新增節點 (Tab)"
+      >
+        ➕ 新增
+      </button>
+
+      <button
+        onClick={onAutoLayout}
+        className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        title="自動排版"
+      >
+        📐 排版
+      </button>
+
+      <div className="w-px bg-gray-300" />
+
+      <button
+        onClick={onZoomOut}
+        className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        title="縮小 (Ctrl + -)"
+      >
+        🔍−
+      </button>
+
+      <span className="px-3 py-2 bg-gray-50 rounded text-sm flex items-center">
+        {Math.round(zoom * 100)}%
+      </span>
+
+      <button
+        onClick={onZoomReset}
+        className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        title="重置縮放 (Ctrl + 0)"
+      >
+        1:1
+      </button>
+
+      <button
+        onClick={onZoomIn}
+        className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        title="放大 (Ctrl + +)"
+      >
+        🔍+
+      </button>
+
+      <div className="w-px bg-gray-300" />
+
+      <button
+        onClick={onExport}
+        className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        title="匯出"
+      >
+        💾 匯出
+      </button>
+    </div>
+  );
+};
