@@ -133,49 +133,61 @@ export const MindMapEditor: React.FC = () => {
     onLayoutUpdate: handleLayoutUpdate,
   });
 
-  const getCenteredPosition = useCallback(
-    (
-      size: { width: number; height: number },
-      nodeSize: { width: number; height: number } = DEFAULT_NODE_SIZE
-    ) => ({
-      x: Math.max((size.width - nodeSize.width) / 2, 0),
-      y: Math.max((size.height - nodeSize.height) / 2, 0),
-    }),
-    []
-  );
-
   // 初始化：創建根節點並置中
   useEffect(() => {
     if (state.nodes.size !== 0) return;
 
-    const centeredPosition = getCenteredPosition(containerSize);
-    createNode('中心主題', centeredPosition, null);
-  }, [state.nodes.size, containerSize, createNode, getCenteredPosition]);
+    // 在 (0, 0) 創建根節點
+    const rootId = createNode('中心主題', { x: 0, y: 0 }, null);
 
-  // 容器尺寸變化時，僅在只有根節點時重新置中
+    // 計算 viewport 偏移量，讓根節點顯示在畫面中心
+    // 螢幕位置 = 節點位置 * zoom + viewport偏移
+    // 要讓節點中心在畫面中心：containerCenter = nodeCenter * zoom + viewportOffset
+    // viewportOffset = containerCenter - nodeCenter * zoom
+    const nodeWidth = DEFAULT_NODE_SIZE.width;
+    const nodeHeight = DEFAULT_NODE_SIZE.height;
+    const viewportX =
+      (containerSize.width - nodeWidth * state.viewport.zoom) / 2;
+    const viewportY =
+      (containerSize.height - nodeHeight * state.viewport.zoom) / 2;
+
+    updateViewport({ x: viewportX, y: viewportY });
+
+    // Select the newly created root node
+    if (rootId) {
+      selectNode(rootId);
+    }
+  }, [
+    state.nodes.size,
+    containerSize,
+    createNode,
+    state.viewport.zoom,
+    updateViewport,
+    selectNode,
+  ]);
+
+  // 容器尺寸變化時，重新計算 viewport 偏移量讓 root node 置中
+  // 注意：只在 containerSize 變化時觸發，不在 viewport 變化時觸發（避免干擾用戶拖曳）
   useEffect(() => {
-    if (!state.rootNodeId || state.nodes.size !== 1) return;
+    if (!state.rootNodeId) return;
+    // 只在只有根節點時自動置中
+    if (state.nodes.size !== 1) return;
 
     const rootNode = state.nodes.get(state.rootNodeId);
     if (!rootNode) return;
 
-    const targetPosition = getCenteredPosition(containerSize, rootNode.size);
-    const isAlreadyCentered =
-      Math.abs(rootNode.position.x - targetPosition.x) < 0.5 &&
-      Math.abs(rootNode.position.y - targetPosition.y) < 0.5;
+    // 計算讓節點中心顯示在畫面中心的 viewport 偏移
+    const zoom = state.viewport.zoom;
+    const viewportX =
+      containerSize.width / 2 -
+      (rootNode.position.x + rootNode.size.width / 2) * zoom;
+    const viewportY =
+      containerSize.height / 2 -
+      (rootNode.position.y + rootNode.size.height / 2) * zoom;
 
-    if (isAlreadyCentered) return;
-
-    updateNode(rootNode.id, { position: targetPosition });
-    updateViewport({ x: 0, y: 0 });
-  }, [
-    containerSize,
-    state.nodes,
-    state.rootNodeId,
-    updateNode,
-    updateViewport,
-    getCenteredPosition,
-  ]);
+    updateViewport({ x: viewportX, y: viewportY });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerSize.width, containerSize.height]);
 
   // 監聽容器大小變化
   useEffect(() => {
@@ -318,8 +330,23 @@ export const MindMapEditor: React.FC = () => {
   }, [state.viewport.zoom, updateViewport]);
 
   const handleZoomReset = useCallback(() => {
-    updateViewport({ zoom: 1, x: 0, y: 0 });
-  }, [updateViewport]);
+    // 重置縮放到 2x，並計算 viewport 偏移量讓 root node 置中
+    const zoom = 2;
+    const rootNode = state.rootNodeId
+      ? state.nodes.get(state.rootNodeId)
+      : null;
+    const nodeWidth = rootNode?.size.width ?? DEFAULT_NODE_SIZE.width;
+    const nodeHeight = rootNode?.size.height ?? DEFAULT_NODE_SIZE.height;
+    const nodeX = rootNode?.position.x ?? 0;
+    const nodeY = rootNode?.position.y ?? 0;
+
+    // 計算讓節點中心顯示在畫面中心的 viewport 偏移
+    const viewportX = containerSize.width / 2 - (nodeX + nodeWidth / 2) * zoom;
+    const viewportY =
+      containerSize.height / 2 - (nodeY + nodeHeight / 2) * zoom;
+
+    updateViewport({ zoom, x: viewportX, y: viewportY });
+  }, [state.rootNodeId, state.nodes, containerSize, updateViewport]);
 
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {

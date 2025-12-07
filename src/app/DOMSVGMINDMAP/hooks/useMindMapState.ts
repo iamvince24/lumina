@@ -19,7 +19,7 @@ export const useMindMapState = () => {
     connections: [],
     selectedNodeIds: [],
     rootNodeId: null,
-    viewport: { x: 0, y: 0, zoom: 1 },
+    viewport: { x: 0, y: 0, zoom: 2 }, // x, y will be adjusted in MindMapEditor
   });
 
   const createNode = useCallback(
