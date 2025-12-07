@@ -95,6 +95,14 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
       } else {
         handleBlur();
       }
+    } else if (e.key === 'Tab') {
+      // 如果是新節點（原內容為空）且編輯內容也為空，則取消新增
+      if (node.content === '' && editContent.trim() === '') {
+        e.preventDefault();
+        setIsEditing(false);
+        onCancelNode(node.id);
+      }
+      // 如果有內容，讓 Tab 正常觸發（會在 MindMapEditor 中處理創建新子節點）
     } else if (e.key === 'Escape') {
       // 如果是新節點（原內容為空）且編輯內容也為空，則取消新增
       if (node.content === '' && editContent.trim() === '') {
