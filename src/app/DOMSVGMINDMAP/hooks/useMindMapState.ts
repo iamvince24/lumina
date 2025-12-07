@@ -270,6 +270,95 @@ export const useMindMapState = () => {
     });
   }, []);
 
+  // Move node to a new parent or reorder among siblings
+  const moveNode = useCallback(
+    (nodeId: string, newParentId: string, insertIndex?: number) => {
+      setState((prev) => {
+        const newNodes = new Map(prev.nodes);
+        const node = newNodes.get(nodeId);
+        const newParent = newNodes.get(newParentId);
+
+        if (!node || !newParent) return prev;
+
+        // Prevent moving a node to be its own descendant
+        const isDescendant = (
+          ancestorId: string,
+          descendantId: string
+        ): boolean => {
+          const ancestor = newNodes.get(ancestorId);
+          if (!ancestor) return false;
+          if (ancestor.children.includes(descendantId)) return true;
+          return ancestor.children.some((childId) =>
+            isDescendant(childId, descendantId)
+          );
+        };
+
+        if (isDescendant(nodeId, newParentId)) return prev;
+
+        const oldParentId = node.parentId;
+
+        // If moving to same parent at same position, skip
+        if (oldParentId === newParentId) {
+          const currentIndex = newParent.children.indexOf(nodeId);
+          if (
+            insertIndex === undefined ||
+            insertIndex === currentIndex ||
+            insertIndex === currentIndex + 1
+          ) {
+            return prev;
+          }
+        }
+
+        // Remove from old parent's children
+        if (oldParentId && newNodes.has(oldParentId)) {
+          const oldParent = newNodes.get(oldParentId)!;
+          oldParent.children = oldParent.children.filter((id) => id !== nodeId);
+          newNodes.set(oldParentId, { ...oldParent });
+        }
+
+        // Add to new parent's children at specified index
+        const newChildren = newParent.children.filter((id) => id !== nodeId);
+        const targetIndex =
+          insertIndex !== undefined
+            ? Math.min(insertIndex, newChildren.length)
+            : newChildren.length;
+        newChildren.splice(targetIndex, 0, nodeId);
+        newNodes.set(newParentId, { ...newParent, children: newChildren });
+
+        // Update node's parentId
+        newNodes.set(nodeId, { ...node, parentId: newParentId });
+
+        // Update connections: remove old connection, add new one
+        const newConnections = prev.connections.filter(
+          (c) => c.targetId !== nodeId
+        );
+        newConnections.push({
+          id: `conn_${newParentId}_${nodeId}`,
+          sourceId: newParentId,
+          targetId: nodeId,
+          style: {
+            strokeColor: '#94a3b8',
+            strokeWidth: 2,
+            strokeStyle: 'solid' as const,
+            arrowSize: 8,
+          },
+        });
+
+        // Update rootNodeId if moving root to become child
+        const newRootNodeId =
+          nodeId === prev.rootNodeId ? newParentId : prev.rootNodeId;
+
+        return {
+          ...prev,
+          nodes: newNodes,
+          connections: newConnections,
+          rootNodeId: newRootNodeId,
+        };
+      });
+    },
+    []
+  );
+
   return {
     state,
     createNode,
@@ -280,5 +369,6 @@ export const useMindMapState = () => {
     clearSelection,
     updateViewport,
     toggleNodeCollapse,
+    moveNode,
   };
 };

@@ -70,3 +70,20 @@ export interface DragState {
 }
 
 export type EditorMode = 'select' | 'pan' | 'connect';
+
+// Drop target types for drag-and-drop
+export type DropTargetType = 'child' | 'sibling-before' | 'sibling-after';
+
+export interface DropTarget {
+  nodeId: string; // Target node ID
+  type: DropTargetType; // Type of drop action
+  parentId: string | null; // Parent ID for sibling drops
+  siblingIndex?: number; // Index for sibling reordering
+}
+
+export interface DropIndicatorState {
+  isVisible: boolean;
+  position: Position;
+  size: Size;
+  type: DropTargetType;
+}

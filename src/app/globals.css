@@ -90,4 +90,76 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #d1d5db;
   }
+
+  /* Mind Map Drag & Drop Utilities */
+  .is-dragging-active * {
+    cursor: grabbing !important;
+  }
+
+  .mindmap-drop-zone-active {
+    position: relative;
+  }
+
+  .mindmap-drop-zone-active::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 12px;
+    pointer-events: none;
+    background: rgba(107, 114, 128, 0.08);
+    animation: dropZonePulse 1.5s ease-in-out infinite;
+  }
+}
+
+/* Global drag animations */
+@keyframes dropZonePulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Smooth transitions for mind map container during drag */
+.mindmap-container-dragging {
+  transition: none !important;
+}
+
+/* Connection line animation during drag */
+@keyframes connectionPulse {
+  0%,
+  100% {
+    stroke-opacity: 0.4;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-opacity: 0.8;
+    stroke-dashoffset: 8;
+  }
+}
+
+/* Ghost node preview styles */
+.ghost-node-preview {
+  animation: ghostAppear 0.3s ease-out forwards;
+}
+
+@keyframes ghostAppear {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* Enhanced grab cursor for better feedback */
+[data-node-id] {
+  cursor: grab;
+  user-select: none;
+}
+
+[data-node-id]:active {
+  cursor: grabbing;
 }

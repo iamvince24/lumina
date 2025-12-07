@@ -11,6 +11,9 @@ const MAX_WIDTH = 600; // 最大寬度
 interface MindMapNodeProps {
   node: MindMapNodeType;
   isSelected: boolean;
+  isBeingDragged?: boolean;
+  isDropTarget?: boolean;
+  isDragSource?: boolean; // New: indicates this node initiated the drag
   editRequested: boolean;
   onSelect: (nodeId: string, multiSelect: boolean) => void;
   onMouseDown: (nodeId: string, event: React.MouseEvent) => void;
@@ -29,6 +32,9 @@ interface MindMapNodeProps {
 export const MindMapNode: React.FC<MindMapNodeProps> = ({
   node,
   isSelected,
+  isBeingDragged = false,
+  isDropTarget = false,
+  isDragSource = false,
   editRequested,
   onSelect,
   onMouseDown,
@@ -205,6 +211,32 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
   // 計算當前應該顯示的文字內容
   const displayContent = isEditing ? editContent : node.content;
 
+  // Calculate drag-specific styles
+  const getDragStyles = () => {
+    if (isDragSource) {
+      return {
+        opacity: 0.7,
+        zIndex: 1000,
+        boxShadow: `
+          0 8px 16px rgba(107, 114, 128, 0.12),
+          0 0 0 2px rgba(107, 114, 128, 0.15)
+        `,
+      };
+    }
+    if (isBeingDragged) {
+      return {
+        opacity: 0.4,
+        zIndex: 1,
+      };
+    }
+    return {
+      opacity: 1,
+      zIndex: 'auto' as const,
+    };
+  };
+
+  const dragStyles = getDragStyles();
+
   return (
     <div
       ref={nodeRef}
@@ -218,36 +250,51 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
         minWidth: `${MIN_WIDTH}px`,
         maxWidth: `${MAX_WIDTH}px`,
         minHeight: '32px',
-        transform: 'scale(1)',
-        transformOrigin: 'top left',
-        transition: isResizing
-          ? 'none'
-          : 'top 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-        willChange: 'top, left, transform',
+        transition:
+          isResizing || isDragSource
+            ? 'opacity 0.15s ease, box-shadow 0.2s ease'
+            : 'top 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+        willChange: 'top, left, opacity, box-shadow',
         pointerEvents: 'auto',
-        cursor: isResizing ? 'ew-resize' : 'move',
+        cursor: isResizing ? 'ew-resize' : isDragSource ? 'grabbing' : 'grab',
+        opacity: dragStyles.opacity,
+        zIndex: dragStyles.zIndex,
+        borderRadius: '10px',
+        ...(isDragSource && { boxShadow: dragStyles.boxShadow }),
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseDownCapture={handleMouseDownCapture}
     >
       <div
-        className="w-full flex-1 flex items-start justify-center transition-all duration-200 relative"
+        className="w-full flex-1 flex items-start justify-center relative"
         style={{
-          backgroundColor: node.style.backgroundColor,
+          backgroundColor: isDropTarget
+            ? 'rgba(107, 114, 128, 0.06)'
+            : node.style.backgroundColor,
           color: node.style.textColor,
-          borderColor: isSelected ? '#3b82f6' : 'transparent',
-          borderWidth: isSelected
-            ? `${Math.max(node.style.borderWidth, 1)}px`
-            : '0px',
-          borderStyle: 'solid',
           borderRadius: `${node.style.borderRadius}px`,
           padding: `${node.style.padding}px`,
           fontSize: `${node.style.fontSize}px`,
           fontWeight: node.style.fontWeight,
-          boxShadow: isSelected ? '0 0 0 3px rgba(59, 130, 246, 0.3)' : 'none',
+          outline: isDropTarget
+            ? '2px solid #6b7280'
+            : isSelected
+              ? '2px solid #3b82f6'
+              : 'none',
+          outlineOffset: '0px',
+          boxShadow: isDropTarget
+            ? `
+                0 0 0 4px rgba(107, 114, 128, 0.12),
+                0 0 20px rgba(107, 114, 128, 0.15)
+              `
+            : isSelected
+              ? '0 0 0 4px rgba(59, 130, 246, 0.15)'
+              : 'none',
           wordBreak: 'break-word',
           overflowWrap: 'break-word',
+          transition:
+            'box-shadow 0.15s ease, outline 0.15s ease, background-color 0.15s ease',
         }}
       >
         {/* 隱藏的測量元素 - 用於撐開容器寬度和高度 */}

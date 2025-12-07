@@ -4,11 +4,13 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { MindMapNode } from './MindMapNode';
 import { MindMapCanvas } from './MindMapCanvas';
 import { EditorToolbar } from './EditorToolbar';
+import { DropIndicator } from './DropIndicator';
 import { useMindMapState } from '../hooks/useMindMapState';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useAutoLayout } from '../hooks/useAutoLayout';
 import { clamp } from '../utils/geometry';
+import { DropTarget } from '../types';
 
 const DEFAULT_NODE_SIZE = { width: 200, height: 40 };
 const directionVectors = {
@@ -70,12 +72,52 @@ export const MindMapEditor: React.FC = () => {
     clearSelection,
     updateViewport,
     toggleNodeCollapse,
+    moveNode,
   } = useMindMapState();
 
-  const { dragState, handleMouseDown } = useDragAndDrop({
-    onDrag: (nodeId, position) => {
-      updateNode(nodeId, { position });
+  // Track current drop target for rendering indicators
+  const [currentDropTarget, setCurrentDropTarget] = useState<DropTarget | null>(
+    null
+  );
+
+  const handleDragEnd = useCallback(
+    (nodeId: string, _position: { x: number; y: number }) => {
+      if (currentDropTarget) {
+        // Handle drop based on target type
+        if (currentDropTarget.type === 'child') {
+          // Move node to become child of target
+          moveNode(nodeId, currentDropTarget.nodeId);
+        } else if (
+          currentDropTarget.type === 'sibling-before' ||
+          currentDropTarget.type === 'sibling-after'
+        ) {
+          // Move node to new sibling position
+          if (currentDropTarget.parentId) {
+            moveNode(
+              nodeId,
+              currentDropTarget.parentId,
+              currentDropTarget.siblingIndex
+            );
+          }
+        }
+      }
+      // Layout will be recalculated automatically
     },
+    [currentDropTarget, moveNode]
+  );
+
+  const { dragState, dropTarget, handleMouseDown } = useDragAndDrop({
+    nodes: state.nodes,
+    rootNodeId: state.rootNodeId,
+    viewport: state.viewport,
+    onDrag: (nodeId, position) => {
+      // Only update position for root node (free drag)
+      if (nodeId === state.rootNodeId) {
+        updateNode(nodeId, { position });
+      }
+    },
+    onDragEnd: handleDragEnd,
+    onDropTargetChange: setCurrentDropTarget,
   });
 
   const handleLayoutUpdate = useCallback(
@@ -460,6 +502,17 @@ export const MindMapEditor: React.FC = () => {
               key={node.id}
               node={node}
               isSelected={state.selectedNodeIds.includes(node.id)}
+              isBeingDragged={
+                dragState.isDragging &&
+                dragState.nodeId !== node.id &&
+                dragState.nodeId !== state.rootNodeId
+              }
+              isDropTarget={
+                dropTarget?.nodeId === node.id && dropTarget?.type === 'child'
+              }
+              isDragSource={
+                dragState.isDragging && dragState.nodeId === node.id
+              }
               editRequested={editingNodeId === node.id}
               onSelect={selectNode}
               onMouseDown={handleNodeMouseDown}
@@ -483,14 +536,14 @@ export const MindMapEditor: React.FC = () => {
               zoom={state.viewport.zoom}
             />
           ))}
-        </div>
 
-        {/* 拖曳提示 */}
-        {dragState.isDragging && (
-          <div className="absolute top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
-            拖曳中...
-          </div>
-        )}
+          {/* Drop Indicator */}
+          <DropIndicator
+            dropTarget={dropTarget}
+            nodes={state.nodes}
+            draggingNodeId={dragState.nodeId}
+          />
+        </div>
       </div>
 
       {/* 狀態列 */}
