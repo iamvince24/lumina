@@ -1,8 +1,11 @@
 'use client';
 
 import React from 'react';
+import { ViewMode } from '../types';
 
 interface EditorToolbarProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   onAddNode: () => void;
   onAutoLayout: () => void;
   onZoomIn: () => void;
@@ -13,6 +16,8 @@ interface EditorToolbarProps {
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
+  viewMode,
+  onViewModeChange,
   onAddNode,
   onAutoLayout,
   onZoomIn,
@@ -23,6 +28,34 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 }) => {
   return (
     <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-2 flex gap-2 z-10">
+      {/* 視圖切換按鈕組 */}
+      <div className="flex bg-gray-100 rounded-lg p-0.5">
+        <button
+          onClick={() => onViewModeChange('outline')}
+          className={`px-3 py-2 rounded-md transition-colors ${
+            viewMode === 'outline'
+              ? 'bg-blue-500 text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-200'
+          }`}
+          title="大綱列表視圖"
+        >
+          📄
+        </button>
+        <button
+          onClick={() => onViewModeChange('mindmap')}
+          className={`px-3 py-2 rounded-md transition-colors ${
+            viewMode === 'mindmap'
+              ? 'bg-blue-500 text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-200'
+          }`}
+          title="心智圖視圖"
+        >
+          🔗
+        </button>
+      </div>
+
+      <div className="w-px bg-gray-300" />
+
       <button
         onClick={onAddNode}
         className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"

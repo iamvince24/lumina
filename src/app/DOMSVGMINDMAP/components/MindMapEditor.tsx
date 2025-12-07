@@ -5,12 +5,13 @@ import { MindMapNode } from './MindMapNode';
 import { MindMapCanvas } from './MindMapCanvas';
 import { EditorToolbar } from './EditorToolbar';
 import { DropIndicator } from './DropIndicator';
+import { OutlineListView } from './OutlineListView';
 import { useMindMapState } from '../hooks/useMindMapState';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useAutoLayout } from '../hooks/useAutoLayout';
 import { clamp } from '../utils/geometry';
-import { DropTarget } from '../types';
+import { DropTarget, ViewMode } from '../types';
 
 const DEFAULT_NODE_SIZE = { width: 200, height: 40 };
 const directionVectors = {
@@ -61,6 +62,8 @@ export const MindMapEditor: React.FC = () => {
   });
   // 追蹤需要進入編輯模式的節點 (Command + Enter)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  // 視圖模式：mindmap 或 outline
+  const [viewMode, setViewMode] = useState<ViewMode>('mindmap');
 
   const {
     state,
@@ -81,7 +84,7 @@ export const MindMapEditor: React.FC = () => {
   );
 
   const handleDragEnd = useCallback(
-    (nodeId: string, _position: { x: number; y: number }) => {
+    (nodeId: string) => {
       if (currentDropTarget) {
         // Handle drop based on target type
         if (currentDropTarget.type === 'child') {
@@ -489,6 +492,8 @@ export const MindMapEditor: React.FC = () => {
   return (
     <div className="w-full h-full flex flex-col bg-gray-50">
       <EditorToolbar
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onAddNode={handleAddNode}
         onAutoLayout={applyTreeLayout}
         onZoomIn={handleZoomIn}
@@ -498,11 +503,12 @@ export const MindMapEditor: React.FC = () => {
         zoom={state.viewport.zoom}
       />
 
+      {/* 心智圖視圖 - 使用 hidden 而非條件渲染，保持 containerRef 掛載 */}
       <div
         ref={containerRef}
         className={`flex-1 relative overflow-hidden overscroll-contain touch-none ${
           isPanning ? 'cursor-grabbing' : 'cursor-grab'
-        }`}
+        } ${viewMode !== 'mindmap' ? 'hidden' : ''}`}
         onClick={handleCanvasClick}
         onWheel={handleWheel}
         onMouseDown={handlePanStart}
@@ -572,6 +578,16 @@ export const MindMapEditor: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* 列表視圖 */}
+      {viewMode === 'outline' && (
+        <OutlineListView
+          nodes={state.nodes}
+          rootNodeId={state.rootNodeId}
+          onContentChange={(nodeId, content) => updateNode(nodeId, { content })}
+          onToggleCollapse={toggleNodeCollapse}
+        />
+      )}
 
       {/* 狀態列 */}
       <div className="h-8 bg-white border-t border-gray-200 px-4 flex items-center justify-between text-sm text-gray-600">

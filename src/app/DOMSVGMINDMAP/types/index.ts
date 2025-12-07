@@ -71,6 +71,8 @@ export interface DragState {
 
 export type EditorMode = 'select' | 'pan' | 'connect';
 
+export type ViewMode = 'mindmap' | 'outline';
+
 // Drop target types for drag-and-drop
 export type DropTargetType = 'child' | 'sibling-before' | 'sibling-after';
 
