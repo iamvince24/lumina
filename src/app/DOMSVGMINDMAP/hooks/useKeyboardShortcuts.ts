@@ -58,8 +58,8 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
         shortcuts.onRedo?.();
       }
 
-      // Ctrl/Cmd + A: Select All
-      if (isModifier && key === 'a') {
+      // Ctrl/Cmd + A: Select All (only when not editing text)
+      if (isModifier && key === 'a' && !isInputElement) {
         event.preventDefault();
         shortcuts.onSelectAll?.();
       }
