@@ -46,8 +46,18 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
       const entry = entries[0];
       if (!entry) return;
 
-      const { width, height } = entry.contentRect;
-      onSizeChange(node.id, { width, height });
+      // 使用 borderBoxSize 取得包含 padding 和 border 的完整尺寸
+      const borderBox = entry.borderBoxSize[0];
+      if (borderBox) {
+        onSizeChange(node.id, {
+          width: borderBox.inlineSize,
+          height: borderBox.blockSize,
+        });
+      } else {
+        // Fallback for browsers that don't support borderBoxSize
+        const rect = entry.target.getBoundingClientRect();
+        onSizeChange(node.id, { width: rect.width, height: rect.height });
+      }
     });
 
     observer.observe(nodeRef.current);
@@ -93,7 +103,7 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
       ref={nodeRef}
       data-node-id={node.id}
       data-zoom={zoom}
-      className="absolute cursor-move select-none"
+      className="absolute cursor-move select-none flex flex-col"
       style={{
         left: `${node.position.x}px`,
         top: `${node.position.y}px`,
@@ -104,13 +114,14 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
         transition:
           'top 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
         willChange: 'top, left, transform',
+        pointerEvents: 'auto',
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseDownCapture={handleMouseDownCapture}
     >
       <div
-        className="w-full h-full flex items-center justify-center transition-all duration-200"
+        className="w-full flex-1 flex items-center justify-center transition-all duration-200"
         style={{
           backgroundColor: node.style.backgroundColor,
           color: node.style.textColor,

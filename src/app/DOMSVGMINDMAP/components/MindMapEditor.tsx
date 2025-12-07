@@ -18,6 +18,31 @@ const directionVectors = {
   right: { x: 1, y: 0 },
 } as const;
 
+// 計算可見節點（排除被收合父節點的子孫節點）
+const getVisibleNodes = (
+  nodes: Map<string, import('../types').MindMapNode>,
+  rootNodeId: string | null
+): import('../types').MindMapNode[] => {
+  if (!rootNodeId) return [];
+
+  const visibleNodes: import('../types').MindMapNode[] = [];
+
+  const traverse = (nodeId: string) => {
+    const node = nodes.get(nodeId);
+    if (!node) return;
+
+    visibleNodes.push(node);
+
+    // 如果節點沒有被收合，則遍歷它的子節點
+    if (!node.isCollapsed) {
+      node.children.forEach(traverse);
+    }
+  };
+
+  traverse(rootNodeId);
+  return visibleNodes;
+};
+
 export const MindMapEditor: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
@@ -42,6 +67,7 @@ export const MindMapEditor: React.FC = () => {
     selectNode,
     clearSelection,
     updateViewport,
+    toggleNodeCollapse,
   } = useMindMapState();
 
   const { dragState, handleMouseDown } = useDragAndDrop({
@@ -382,17 +408,18 @@ export const MindMapEditor: React.FC = () => {
           connections={state.connections}
           viewport={state.viewport}
           containerSize={containerSize}
+          onToggleCollapse={toggleNodeCollapse}
         />
 
         {/* DOM 節點層 */}
         <div
-          className="absolute top-0 left-0 w-full h-full"
+          className="absolute top-0 left-0 w-full h-full pointer-events-none"
           style={{
             transform: `translate(${state.viewport.x}px, ${state.viewport.y}px) scale(${state.viewport.zoom})`,
             transformOrigin: '0 0',
           }}
         >
-          {Array.from(state.nodes.values()).map((node) => (
+          {getVisibleNodes(state.nodes, state.rootNodeId).map((node) => (
             <MindMapNode
               key={node.id}
               node={node}
