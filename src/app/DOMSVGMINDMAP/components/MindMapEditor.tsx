@@ -157,7 +157,7 @@ export const MindMapEditor: React.FC = () => {
       if (rootNode) {
         const newX = rootNode.position.x + 200;
         const newY = rootNode.position.y;
-        createNode('新節點', { x: newX, y: newY }, state.rootNodeId);
+        createNode('', { x: newX, y: newY }, state.rootNodeId);
       }
     } else if (state.selectedNodeIds.length > 0) {
       // 有選中節點時，添加為子節點
@@ -167,7 +167,7 @@ export const MindMapEditor: React.FC = () => {
         const newX = selectedNode.position.x + 200;
         const newY =
           selectedNode.position.y + selectedNode.children.length * 80;
-        createNode('新節點', { x: newX, y: newY }, selectedId);
+        createNode('', { x: newX, y: newY }, selectedId);
       }
     }
   }, [state, createNode]);
@@ -431,6 +431,11 @@ export const MindMapEditor: React.FC = () => {
               }
               onDoubleClick={() => {}}
               onSizeChange={(nodeId, size) => updateNodeSize(nodeId, size)}
+              onCancelNode={(nodeId) => {
+                if (nodeId !== state.rootNodeId) {
+                  deleteNode(nodeId);
+                }
+              }}
               zoom={state.viewport.zoom}
             />
           ))}

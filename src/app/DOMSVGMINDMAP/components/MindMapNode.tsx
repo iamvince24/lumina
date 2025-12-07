@@ -14,6 +14,7 @@ interface MindMapNodeProps {
     nodeId: string,
     size: { width: number; height: number }
   ) => void;
+  onCancelNode: (nodeId: string) => void;
   zoom: number;
 }
 
@@ -25,9 +26,11 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
   onContentChange,
   onDoubleClick,
   onSizeChange,
+  onCancelNode,
   zoom,
 }: MindMapNodeProps) => {
-  const [isEditing, setIsEditing] = useState(false);
+  // 新節點（空內容）自動進入編輯模式 - 直接在初始狀態設定
+  const [isEditing, setIsEditing] = useState(() => node.content === '');
   const [editContent, setEditContent] = useState(node.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -85,10 +88,23 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleBlur();
+      // 如果是新節點（原內容為空）且編輯內容也為空，則取消新增
+      if (node.content === '' && editContent.trim() === '') {
+        setIsEditing(false);
+        onCancelNode(node.id);
+      } else {
+        handleBlur();
+      }
     } else if (e.key === 'Escape') {
-      setEditContent(node.content);
-      setIsEditing(false);
+      // 如果是新節點（原內容為空）且編輯內容也為空，則取消新增
+      if (node.content === '' && editContent.trim() === '') {
+        setIsEditing(false);
+        onCancelNode(node.id);
+      } else {
+        // 否則恢復原內容
+        setEditContent(node.content);
+        setIsEditing(false);
+      }
     }
   };
 
@@ -144,11 +160,14 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
             onChange={(e) => setEditContent(e.target.value)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="w-full h-full resize-none outline-none bg-transparent"
+            className="w-full resize-none outline-none bg-transparent text-center"
+            rows={1}
             style={{
               color: node.style.textColor,
               fontSize: `${node.style.fontSize}px`,
               fontWeight: node.style.fontWeight,
+              lineHeight: '1.5',
+              minHeight: '1.5em',
             }}
           />
         ) : (
