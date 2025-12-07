@@ -6,6 +6,7 @@ import { MindMapNode as MindMapNodeType } from '../types';
 interface MindMapNodeProps {
   node: MindMapNodeType;
   isSelected: boolean;
+  editRequested: boolean;
   onSelect: (nodeId: string, multiSelect: boolean) => void;
   onMouseDown: (nodeId: string, event: React.MouseEvent) => void;
   onContentChange: (nodeId: string, content: string) => void;
@@ -15,18 +16,21 @@ interface MindMapNodeProps {
     size: { width: number; height: number }
   ) => void;
   onCancelNode: (nodeId: string) => void;
+  onEditComplete: () => void;
   zoom: number;
 }
 
 export const MindMapNode: React.FC<MindMapNodeProps> = ({
   node,
   isSelected,
+  editRequested,
   onSelect,
   onMouseDown,
   onContentChange,
   onDoubleClick,
   onSizeChange,
   onCancelNode,
+  onEditComplete,
   zoom,
 }: MindMapNodeProps) => {
   // 新節點（空內容）自動進入編輯模式 - 直接在初始狀態設定
@@ -41,6 +45,18 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
       textareaRef.current.select();
     }
   }, [isEditing]);
+
+  // 當收到編輯請求時進入編輯模式 (Command + Enter)
+  // 直接在 render 時判斷並更新狀態，避免在 useEffect 中同步調用 setState
+  if (editRequested && !isEditing) {
+    setIsEditing(true);
+  }
+
+  useEffect(() => {
+    if (editRequested) {
+      onEditComplete();
+    }
+  }, [editRequested, onEditComplete]);
 
   useEffect(() => {
     if (!nodeRef.current) return;

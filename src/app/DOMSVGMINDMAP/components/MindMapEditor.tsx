@@ -57,6 +57,8 @@ export const MindMapEditor: React.FC = () => {
     width: 800,
     height: 600,
   });
+  // 追蹤需要進入編輯模式的節點 (Command + Enter)
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
   const {
     state,
@@ -379,6 +381,11 @@ export const MindMapEditor: React.FC = () => {
     onZoomReset: handleZoomReset,
     onNewNode: handleAddNode,
     onNewSiblingNode: handleAddSiblingNode,
+    onEditNode: () => {
+      if (state.selectedNodeIds.length > 0) {
+        setEditingNodeId(state.selectedNodeIds[0]);
+      }
+    },
     onArrowUp: () => handleArrowNavigation('up'),
     onArrowDown: () => handleArrowNavigation('down'),
     onArrowLeft: () => handleArrowNavigation('left'),
@@ -453,6 +460,7 @@ export const MindMapEditor: React.FC = () => {
               key={node.id}
               node={node}
               isSelected={state.selectedNodeIds.includes(node.id)}
+              editRequested={editingNodeId === node.id}
               onSelect={selectNode}
               onMouseDown={handleNodeMouseDown}
               onContentChange={(nodeId, content) =>
@@ -465,6 +473,7 @@ export const MindMapEditor: React.FC = () => {
                   deleteNode(nodeId);
                 }
               }}
+              onEditComplete={() => setEditingNodeId(null)}
               zoom={state.viewport.zoom}
             />
           ))}

@@ -11,6 +11,7 @@ interface KeyboardShortcuts {
   onZoomReset?: () => void;
   onNewNode?: () => void;
   onNewSiblingNode?: () => void;
+  onEditNode?: () => void;
   onArrowUp?: () => void;
   onArrowDown?: () => void;
   onArrowLeft?: () => void;
@@ -91,6 +92,12 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
       if (key === 'Enter' && !isModifier && !isInputElement) {
         event.preventDefault();
         shortcuts.onNewSiblingNode?.();
+      }
+
+      // Ctrl/Cmd + Enter: Edit Node (enter edit mode)
+      if (key === 'Enter' && isModifier && !isInputElement) {
+        event.preventDefault();
+        shortcuts.onEditNode?.();
       }
 
       if (!isModifier && !isInputElement) {
