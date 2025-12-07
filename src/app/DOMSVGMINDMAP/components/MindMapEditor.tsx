@@ -10,7 +10,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useAutoLayout } from '../hooks/useAutoLayout';
 import { clamp } from '../utils/geometry';
 
-const DEFAULT_NODE_SIZE = { width: 150, height: 60 };
+const DEFAULT_NODE_SIZE = { width: 200, height: 40 };
 const directionVectors = {
   up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
@@ -468,6 +468,12 @@ export const MindMapEditor: React.FC = () => {
               }
               onDoubleClick={() => {}}
               onSizeChange={(nodeId, size) => updateNodeSize(nodeId, size)}
+              onWidthChange={(nodeId, width) =>
+                updateNodeSize(nodeId, {
+                  width,
+                  height: state.nodes.get(nodeId)?.size.height || 40,
+                })
+              }
               onCancelNode={(nodeId) => {
                 if (nodeId !== state.rootNodeId) {
                   deleteNode(nodeId);

@@ -34,7 +34,7 @@ export const useMindMapState = () => {
         id: newId,
         content,
         position,
-        size: { width: 150, height: 60 },
+        size: { width: 200, height: 40 },
         parentId,
         children: [],
         isCollapsed: false,

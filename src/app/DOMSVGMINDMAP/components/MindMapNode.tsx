@@ -1,7 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MindMapNode as MindMapNodeType } from '../types';
+
+// 預設寬度常數
+const DEFAULT_WIDTH = 200; // 預設開始斷行的寬度
+const MIN_WIDTH = 60; // 最小寬度
+const MAX_WIDTH = 600; // 最大寬度
 
 interface MindMapNodeProps {
   node: MindMapNodeType;
@@ -15,6 +20,7 @@ interface MindMapNodeProps {
     nodeId: string,
     size: { width: number; height: number }
   ) => void;
+  onWidthChange?: (nodeId: string, width: number) => void;
   onCancelNode: (nodeId: string) => void;
   onEditComplete: () => void;
   zoom: number;
@@ -30,14 +36,29 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
   onDoubleClick,
   onSizeChange,
   onCancelNode,
+  onWidthChange,
   onEditComplete,
   zoom,
 }: MindMapNodeProps) => {
   // 新節點（空內容）自動進入編輯模式 - 直接在初始狀態設定
   const [isEditing, setIsEditing] = useState(() => node.content === '');
   const [editContent, setEditContent] = useState(node.content);
+  const [isResizing, setIsResizing] = useState(false);
+  // null 表示使用自動寬度 (fit-content)
+  // 只有當用戶手動拖拉調整過寬度後，才會設定固定寬度
+  const [customWidth, setCustomWidth] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  // 自動調整 textarea 高度
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [isEditing, editContent]);
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -82,6 +103,42 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
     observer.observe(nodeRef.current);
     return () => observer.disconnect();
   }, [node.id, onSizeChange]);
+
+  // Resize 拖拉處理
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setIsResizing(true);
+      const currentWidth =
+        customWidth ?? nodeRef.current?.offsetWidth ?? DEFAULT_WIDTH;
+      resizeStartRef.current = { x: e.clientX, width: currentWidth };
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!resizeStartRef.current) return;
+        const delta = (moveEvent.clientX - resizeStartRef.current.x) / zoom;
+        const newWidth = Math.max(
+          MIN_WIDTH,
+          Math.min(MAX_WIDTH, resizeStartRef.current.width + delta)
+        );
+        setCustomWidth(newWidth);
+      };
+
+      const handleMouseUp = () => {
+        setIsResizing(false);
+        if (onWidthChange && customWidth !== null) {
+          onWidthChange(node.id, customWidth);
+        }
+        resizeStartRef.current = null;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [customWidth, zoom, node.id, onWidthChange]
+  );
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -145,30 +202,37 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
     }
   };
 
+  // 計算當前應該顯示的文字內容
+  const displayContent = isEditing ? editContent : node.content;
+
   return (
     <div
       ref={nodeRef}
       data-node-id={node.id}
       data-zoom={zoom}
-      className="absolute cursor-move select-none flex flex-col"
+      className="absolute select-none flex flex-col group"
       style={{
         left: `${node.position.x}px`,
         top: `${node.position.y}px`,
-        width: `${node.size.width}px`,
-        minHeight: `${node.size.height}px`,
+        width: customWidth !== null ? `${customWidth}px` : 'fit-content',
+        minWidth: `${MIN_WIDTH}px`,
+        maxWidth: `${MAX_WIDTH}px`,
+        minHeight: '32px',
         transform: 'scale(1)',
         transformOrigin: 'top left',
-        transition:
-          'top 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+        transition: isResizing
+          ? 'none'
+          : 'top 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
         willChange: 'top, left, transform',
         pointerEvents: 'auto',
+        cursor: isResizing ? 'ew-resize' : 'move',
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseDownCapture={handleMouseDownCapture}
     >
       <div
-        className="w-full flex-1 flex items-center justify-center transition-all duration-200"
+        className="w-full flex-1 flex items-start justify-center transition-all duration-200 relative"
         style={{
           backgroundColor: node.style.backgroundColor,
           color: node.style.textColor,
@@ -182,31 +246,75 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
           fontSize: `${node.style.fontSize}px`,
           fontWeight: node.style.fontWeight,
           boxShadow: isSelected ? '0 0 0 3px rgba(59, 130, 246, 0.3)' : 'none',
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
         }}
       >
-        {isEditing ? (
-          <textarea
-            ref={textareaRef}
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className="w-full resize-none outline-none bg-transparent text-center"
-            rows={1}
-            style={{
-              color: node.style.textColor,
-              fontSize: `${node.style.fontSize}px`,
-              fontWeight: node.style.fontWeight,
-              lineHeight: '1.5',
-              minHeight: '1.5em',
-            }}
-          />
-        ) : (
-          <div className="text-center wrap-break-word w-full">
-            {node.content}
-          </div>
-        )}
+        {/* 隱藏的測量元素 - 用於撐開容器寬度和高度 */}
+        <span
+          ref={measureRef}
+          className="min-w-[1em] invisible whitespace-pre-wrap block"
+          style={{
+            fontSize: `${node.style.fontSize}px`,
+            fontWeight: node.style.fontWeight,
+            lineHeight: '1.5',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+          }}
+          aria-hidden="true"
+        >
+          {/* 加上 \u00A0 確保空行和換行後的新行都能正確計算高度 */}
+          {(displayContent || '') + '\u00A0'}
+        </span>
+
+        {/* 編輯區域或顯示區域 - 絕對定位覆蓋在測量元素上 */}
+        <div
+          className="absolute inset-0 flex items-start"
+          style={{ padding: `${node.style.padding}px` }}
+        >
+          {isEditing ? (
+            <textarea
+              ref={textareaRef}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              className="w-full h-full resize-none outline-none bg-transparent"
+              style={{
+                color: node.style.textColor,
+                fontSize: `${node.style.fontSize}px`,
+                fontWeight: node.style.fontWeight,
+                lineHeight: '1.5',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
+              }}
+            />
+          ) : (
+            <div
+              className="w-full"
+              style={{
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
+                whiteSpace: 'pre-wrap',
+                lineHeight: '1.5',
+              }}
+            >
+              {node.content}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Resize Handle - 右側拖拉調整寬度 */}
+      {isSelected && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-blue-400/30 transition-opacity"
+          style={{
+            transform: 'translateX(50%)',
+          }}
+          onMouseDown={handleResizeMouseDown}
+        />
+      )}
     </div>
   );
 };
