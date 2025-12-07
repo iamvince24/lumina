@@ -104,6 +104,11 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // 如果正在進行 IME 組合輸入（例如中文選字），則不處理 Enter 鍵
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       // 如果是新節點（原內容為空）且編輯內容也為空，則取消新增
