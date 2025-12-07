@@ -172,6 +172,34 @@ export const MindMapEditor: React.FC = () => {
     }
   }, [state, createNode]);
 
+  // 新增同層兄弟節點（Enter 鍵行為）
+  // 如果是 root node，則新增子節點；如果是非 root node，則新增同層兄弟節點
+  const handleAddSiblingNode = useCallback(() => {
+    if (state.selectedNodeIds.length === 0) return;
+
+    const selectedId = state.selectedNodeIds[0];
+    const selectedNode = state.nodes.get(selectedId);
+    if (!selectedNode) return;
+
+    // 如果是 root node，則新增子節點（因為 root 沒有兄弟節點）
+    if (selectedId === state.rootNodeId) {
+      const newX = selectedNode.position.x + 200;
+      const newY = selectedNode.position.y + selectedNode.children.length * 80;
+      createNode('', { x: newX, y: newY }, selectedId);
+      return;
+    }
+
+    // 非 root node：新增同層兄弟節點（插入在選中節點的下一個位置）
+    const parentId = selectedNode.parentId;
+    if (!parentId) return;
+
+    // 計算新節點位置（在選中節點下方）
+    const newX = selectedNode.position.x;
+    const newY = selectedNode.position.y + 80;
+    // 傳入 selectedId 作為 afterNodeId，讓新節點插入在選中節點後面
+    createNode('', { x: newX, y: newY }, parentId, selectedId);
+  }, [state, createNode]);
+
   const handleDeleteSelected = useCallback(() => {
     state.selectedNodeIds.forEach((nodeId) => {
       if (nodeId !== state.rootNodeId) {
@@ -350,6 +378,7 @@ export const MindMapEditor: React.FC = () => {
     onZoomOut: handleZoomOut,
     onZoomReset: handleZoomReset,
     onNewNode: handleAddNode,
+    onNewSiblingNode: handleAddSiblingNode,
     onArrowUp: () => handleArrowNavigation('up'),
     onArrowDown: () => handleArrowNavigation('down'),
     onArrowLeft: () => handleArrowNavigation('left'),

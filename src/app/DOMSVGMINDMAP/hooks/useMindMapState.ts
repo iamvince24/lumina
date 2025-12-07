@@ -26,7 +26,8 @@ export const useMindMapState = () => {
     (
       content: string,
       position: { x: number; y: number },
-      parentId: string | null = null
+      parentId: string | null = null,
+      afterNodeId: string | null = null // 新增：在此節點後插入
     ): string => {
       const newId = nodeIdGenerator.generate();
       const newNode: MindMapNode = {
@@ -59,7 +60,22 @@ export const useMindMapState = () => {
           const parentNode = newNodes.get(parentId)!;
           // 檢查是否已經存在此子節點
           if (!parentNode.children.includes(newId)) {
-            parentNode.children = [...parentNode.children, newId];
+            let newChildren: string[];
+
+            // 如果指定了 afterNodeId，則在該節點後插入
+            if (afterNodeId && parentNode.children.includes(afterNodeId)) {
+              const afterIndex = parentNode.children.indexOf(afterNodeId);
+              newChildren = [
+                ...parentNode.children.slice(0, afterIndex + 1),
+                newId,
+                ...parentNode.children.slice(afterIndex + 1),
+              ];
+            } else {
+              // 否則添加到末尾
+              newChildren = [...parentNode.children, newId];
+            }
+
+            parentNode.children = newChildren;
             newNodes.set(parentId, { ...parentNode });
           }
         }

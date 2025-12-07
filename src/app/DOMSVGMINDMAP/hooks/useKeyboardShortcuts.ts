@@ -10,6 +10,7 @@ interface KeyboardShortcuts {
   onZoomOut?: () => void;
   onZoomReset?: () => void;
   onNewNode?: () => void;
+  onNewSiblingNode?: () => void;
   onArrowUp?: () => void;
   onArrowDown?: () => void;
   onArrowLeft?: () => void;
@@ -86,10 +87,10 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
         shortcuts.onNewNode?.();
       }
 
-      // Enter: Create New Node (only when not editing)
+      // Enter: Create Sibling Node (only when not editing)
       if (key === 'Enter' && !isModifier && !isInputElement) {
         event.preventDefault();
-        shortcuts.onNewNode?.();
+        shortcuts.onNewSiblingNode?.();
       }
 
       if (!isModifier && !isInputElement) {
