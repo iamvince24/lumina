@@ -10,6 +10,10 @@ interface KeyboardShortcuts {
   onZoomOut?: () => void;
   onZoomReset?: () => void;
   onNewNode?: () => void;
+  onArrowUp?: () => void;
+  onArrowDown?: () => void;
+  onArrowLeft?: () => void;
+  onArrowRight?: () => void;
 }
 
 export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
@@ -86,6 +90,25 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
       if (key === 'Enter' && !isModifier && !isInputElement) {
         event.preventDefault();
         shortcuts.onNewNode?.();
+      }
+
+      if (!isModifier && !isInputElement) {
+        if (key === 'ArrowUp') {
+          event.preventDefault();
+          shortcuts.onArrowUp?.();
+        }
+        if (key === 'ArrowDown') {
+          event.preventDefault();
+          shortcuts.onArrowDown?.();
+        }
+        if (key === 'ArrowLeft') {
+          event.preventDefault();
+          shortcuts.onArrowLeft?.();
+        }
+        if (key === 'ArrowRight') {
+          event.preventDefault();
+          shortcuts.onArrowRight?.();
+        }
       }
     },
     [shortcuts]

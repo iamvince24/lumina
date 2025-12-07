@@ -11,6 +11,12 @@ import { useAutoLayout } from '../hooks/useAutoLayout';
 import { clamp } from '../utils/geometry';
 
 const DEFAULT_NODE_SIZE = { width: 150, height: 60 };
+const directionVectors = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+} as const;
 
 export const MindMapEditor: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,6 +154,63 @@ export const MindMapEditor: React.FC = () => {
     });
   }, [state.selectedNodeIds, state.rootNodeId, deleteNode]);
 
+  const findDirectionalNeighbor = useCallback(
+    (direction: keyof typeof directionVectors) => {
+      if (state.selectedNodeIds.length === 0) return null;
+
+      const currentId = state.selectedNodeIds[0];
+      const currentNode = state.nodes.get(currentId);
+      if (!currentNode) return null;
+
+      const directionVector = directionVectors[direction];
+      const currentCenter = {
+        x: currentNode.position.x + currentNode.size.width / 2,
+        y: currentNode.position.y + currentNode.size.height / 2,
+      };
+
+      let bestId: string | null = null;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      state.nodes.forEach((node, id) => {
+        if (id === currentId) return;
+
+        const targetCenter = {
+          x: node.position.x + node.size.width / 2,
+          y: node.position.y + node.size.height / 2,
+        };
+
+        const vx = targetCenter.x - currentCenter.x;
+        const vy = targetCenter.y - currentCenter.y;
+
+        const dot = vx * directionVector.x + vy * directionVector.y;
+        if (dot <= 0) return;
+
+        const distance = Math.hypot(vx, vy);
+        if (distance === 0) return;
+
+        const angle = Math.acos(dot / distance);
+        const score = angle * 1000 + distance;
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestId = id;
+        }
+      });
+
+      return bestId;
+    },
+    [state.nodes, state.selectedNodeIds]
+  );
+
+  const handleArrowNavigation = useCallback(
+    (direction: keyof typeof directionVectors) => {
+      const nextId = findDirectionalNeighbor(direction);
+      if (!nextId) return;
+      selectNode(nextId, false);
+    },
+    [findDirectionalNeighbor, selectNode]
+  );
+
   const handleZoomIn = useCallback(() => {
     updateViewport({ zoom: clamp(state.viewport.zoom + 0.1, 0.1, 3) });
   }, [state.viewport.zoom, updateViewport]);
@@ -261,6 +324,10 @@ export const MindMapEditor: React.FC = () => {
     onZoomOut: handleZoomOut,
     onZoomReset: handleZoomReset,
     onNewNode: handleAddNode,
+    onArrowUp: () => handleArrowNavigation('up'),
+    onArrowDown: () => handleArrowNavigation('down'),
+    onArrowLeft: () => handleArrowNavigation('left'),
+    onArrowRight: () => handleArrowNavigation('right'),
   });
 
   const handleCanvasClick = useCallback(() => {

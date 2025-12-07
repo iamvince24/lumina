@@ -146,19 +146,6 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
           </div>
         )}
       </div>
-
-      {node.children.length > 0 && (
-        <div
-          className="absolute right-0 top-1/2 transform translate-x-full -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-xs"
-          style={{
-            backgroundColor: node.style.borderColor,
-            color: '#ffffff',
-            marginLeft: '8px',
-          }}
-        >
-          {node.children.length}
-        </div>
-      )}
     </div>
   );
 };
