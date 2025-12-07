@@ -46,32 +46,46 @@ export const useMindMapState = () => {
 
       setState((prev) => {
         const newNodes = new Map(prev.nodes);
-        newNodes.set(newId, newNode);
 
-        // 如果有父節點，更新父節點的 children
-        if (parentId && newNodes.has(parentId)) {
-          const parentNode = newNodes.get(parentId)!;
-          parentNode.children = [...parentNode.children, newId];
-          newNodes.set(parentId, { ...parentNode });
+        // 防止 React Strict Mode 下重複添加節點
+        if (newNodes.has(newId)) {
+          return prev;
         }
 
-        // 創建連接
-        const newConnections = parentId
-          ? [
-              ...prev.connections,
-              {
-                id: `conn_${parentId}_${newId}`,
-                sourceId: parentId,
-                targetId: newId,
-                style: {
-                  strokeColor: '#94a3b8',
-                  strokeWidth: 2,
-                  strokeStyle: 'solid' as const,
-                  arrowSize: 8,
+        newNodes.set(newId, newNode);
+
+        // 如果有父節點，更新父節點的 children（防止重複添加）
+        if (parentId && newNodes.has(parentId)) {
+          const parentNode = newNodes.get(parentId)!;
+          // 檢查是否已經存在此子節點
+          if (!parentNode.children.includes(newId)) {
+            parentNode.children = [...parentNode.children, newId];
+            newNodes.set(parentId, { ...parentNode });
+          }
+        }
+
+        // 創建連接（防止重複添加）
+        const connectionExists = prev.connections.some(
+          (conn) => conn.sourceId === parentId && conn.targetId === newId
+        );
+
+        const newConnections =
+          parentId && !connectionExists
+            ? [
+                ...prev.connections,
+                {
+                  id: `conn_${parentId}_${newId}`,
+                  sourceId: parentId,
+                  targetId: newId,
+                  style: {
+                    strokeColor: '#94a3b8',
+                    strokeWidth: 2,
+                    strokeStyle: 'solid' as const,
+                    arrowSize: 8,
+                  },
                 },
-              },
-            ]
-          : prev.connections;
+              ]
+            : prev.connections;
 
         return {
           ...prev,

@@ -184,6 +184,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         height: `${containerSize.height}px`,
         transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
         transformOrigin: '0 0',
+        overflow: 'visible', // 確保超出容器範圍的路徑不會被裁切
       }}
     >
       <g>{svgContent}</g>
