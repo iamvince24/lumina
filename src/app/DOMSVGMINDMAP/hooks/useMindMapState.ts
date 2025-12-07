@@ -3,10 +3,10 @@ import { MindMapState, MindMapNode, NodeStyle } from '../types';
 import { nodeIdGenerator } from '../utils/nodeIdGenerator';
 
 const defaultNodeStyle: NodeStyle = {
-  backgroundColor: '#ffffff',
+  backgroundColor: 'transparent',
   textColor: '#333333',
-  borderColor: '#3b82f6',
-  borderWidth: 2,
+  borderColor: 'transparent',
+  borderWidth: 0,
   borderRadius: 8,
   fontSize: 14,
   fontWeight: 'normal',

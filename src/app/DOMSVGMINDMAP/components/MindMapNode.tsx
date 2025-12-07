@@ -114,16 +114,16 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
         style={{
           backgroundColor: node.style.backgroundColor,
           color: node.style.textColor,
-          borderColor: isSelected ? '#3b82f6' : node.style.borderColor,
-          borderWidth: `${node.style.borderWidth}px`,
+          borderColor: isSelected ? '#3b82f6' : 'transparent',
+          borderWidth: isSelected
+            ? `${Math.max(node.style.borderWidth, 1)}px`
+            : '0px',
           borderStyle: 'solid',
           borderRadius: `${node.style.borderRadius}px`,
           padding: `${node.style.padding}px`,
           fontSize: `${node.style.fontSize}px`,
           fontWeight: node.style.fontWeight,
-          boxShadow: isSelected
-            ? '0 0 0 3px rgba(59, 130, 246, 0.3)'
-            : '0 2px 4px rgba(0, 0, 0, 0.1)',
+          boxShadow: isSelected ? '0 0 0 3px rgba(59, 130, 246, 0.3)' : 'none',
         }}
       >
         {isEditing ? (
