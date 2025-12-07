@@ -99,6 +99,8 @@ export const MindMapNode: React.FC<MindMapNodeProps> = ({
     if (editContent.trim() !== node.content) {
       onContentChange(node.id, editContent.trim() || 'Empty Node');
     }
+    // 編輯結束後，確保節點保持選取狀態
+    onSelect(node.id, false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
