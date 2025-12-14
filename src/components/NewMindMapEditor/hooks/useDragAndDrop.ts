@@ -11,6 +11,10 @@ interface UseDragAndDropProps {
   onDrag?: (nodeId: string, position: Position) => void;
   onDragEnd?: (nodeId: string, position: Position) => void;
   onDropTargetChange?: (target: DropTarget | null) => void;
+  // Root node panning callbacks - receive mouse coordinates for viewport updates
+  onRootDragStart?: (nodeId: string, mouseX: number, mouseY: number) => void;
+  onRootDrag?: (mouseX: number, mouseY: number) => void;
+  onRootDragEnd?: (nodeId: string) => void;
 }
 
 const SIBLING_DROP_ZONE_HEIGHT = 20; // Height of the drop zone between siblings
@@ -23,6 +27,9 @@ export const useDragAndDrop = ({
   onDrag,
   onDragEnd,
   onDropTargetChange,
+  onRootDragStart,
+  onRootDrag,
+  onRootDragEnd,
 }: UseDragAndDropProps) => {
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -206,9 +213,14 @@ export const useDragAndDrop = ({
         offset,
       });
 
-      onDragStart?.(nodeId, nodePosition);
+      // Use root-specific callback for root node, otherwise use general callback
+      if (nodeId === rootNodeId) {
+        onRootDragStart?.(nodeId, event.clientX, event.clientY);
+      } else {
+        onDragStart?.(nodeId, nodePosition);
+      }
     },
-    [onDragStart]
+    [onDragStart, onRootDragStart, rootNodeId]
   );
 
   const handleMouseMove = useCallback(
@@ -221,17 +233,8 @@ export const useDragAndDrop = ({
       const vp = viewportRef.current;
 
       if (isRootNode) {
-        // Root node: free drag
-        // offset is the difference between mouse and node position in screen coords
-        // So node screen position = mouse screen position - offset
-        // Then convert to canvas coords: (nodeScreen - vp) / zoom
-        const nodeScreenX = event.clientX - state.offset.x;
-        const nodeScreenY = event.clientY - state.offset.y;
-        const newPosition = {
-          x: (nodeScreenX - vp.x) / vp.zoom,
-          y: (nodeScreenY - vp.y) / vp.zoom,
-        };
-        onDrag?.(state.nodeId, newPosition);
+        // Root node: pan viewport by passing mouse coordinates
+        onRootDrag?.(event.clientX, event.clientY);
       } else {
         // Child node: calculate drop target
         const newTarget = calculateDropTarget(
@@ -244,7 +247,7 @@ export const useDragAndDrop = ({
         onDropTargetChange?.(newTarget);
       }
     },
-    [rootNodeId, onDrag, onDropTargetChange, calculateDropTarget]
+    [rootNodeId, onRootDrag, onDropTargetChange, calculateDropTarget]
   );
 
   const handleMouseUp = useCallback(
@@ -253,15 +256,22 @@ export const useDragAndDrop = ({
 
       if (!state.isDragging || !state.nodeId || !state.offset) return;
 
-      const vp = viewportRef.current;
-      const nodeScreenX = event.clientX - state.offset.x;
-      const nodeScreenY = event.clientY - state.offset.y;
-      const finalPosition = {
-        x: (nodeScreenX - vp.x) / vp.zoom,
-        y: (nodeScreenY - vp.y) / vp.zoom,
-      };
+      const isRootNode = state.nodeId === rootNodeId;
 
-      onDragEnd?.(state.nodeId, finalPosition);
+      if (isRootNode) {
+        // Root node: call root-specific end callback
+        onRootDragEnd?.(state.nodeId);
+      } else {
+        // Non-root node: calculate final position
+        const vp = viewportRef.current;
+        const nodeScreenX = event.clientX - state.offset.x;
+        const nodeScreenY = event.clientY - state.offset.y;
+        const finalPosition = {
+          x: (nodeScreenX - vp.x) / vp.zoom,
+          y: (nodeScreenY - vp.y) / vp.zoom,
+        };
+        onDragEnd?.(state.nodeId, finalPosition);
+      }
 
       setDragState({
         isDragging: false,
@@ -273,7 +283,7 @@ export const useDragAndDrop = ({
       setDropTarget(null);
       onDropTargetChange?.(null);
     },
-    [onDragEnd, onDropTargetChange]
+    [onDragEnd, onRootDragEnd, onDropTargetChange, rootNodeId]
   );
 
   useEffect(() => {

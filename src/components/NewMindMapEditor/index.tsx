@@ -133,18 +133,56 @@ export function NewMindMapEditor({
     [currentDropTarget, moveNode]
   );
 
+  // 追蹤拖拉 root node 時的起始 viewport 和滑鼠位置
+  const rootDragStartRef = useRef<{
+    viewportX: number;
+    viewportY: number;
+    mouseX: number;
+    mouseY: number;
+  } | null>(null);
+
+  const handleRootDragStart = useCallback(
+    (nodeId: string, mouseX: number, mouseY: number) => {
+      if (nodeId === rootNodeId) {
+        rootDragStartRef.current = {
+          viewportX: viewport.x,
+          viewportY: viewport.y,
+          mouseX,
+          mouseY,
+        };
+      }
+    },
+    [rootNodeId, viewport.x, viewport.y]
+  );
+
+  const handleRootDrag = useCallback(
+    (mouseX: number, mouseY: number) => {
+      if (rootDragStartRef.current) {
+        const dx = mouseX - rootDragStartRef.current.mouseX;
+        const dy = mouseY - rootDragStartRef.current.mouseY;
+        updateViewport({
+          x: rootDragStartRef.current.viewportX + dx,
+          y: rootDragStartRef.current.viewportY + dy,
+        });
+      }
+    },
+    [updateViewport]
+  );
+
+  const handleRootDragEnd = useCallback((_nodeId: string) => {
+    rootDragStartRef.current = null;
+  }, []);
+
   const { dragState, dropTarget, handleMouseDown } = useDragAndDrop({
     nodes,
     rootNodeId,
     viewport,
-    onDrag: (nodeId, position) => {
-      // Only update position for root node (free drag)
-      if (nodeId === rootNodeId) {
-        updateNode(nodeId, { position });
-      }
-    },
     onDragEnd: handleDragEnd,
     onDropTargetChange: setCurrentDropTarget,
+    // Root node panning callbacks
+    onRootDragStart: handleRootDragStart,
+    onRootDrag: handleRootDrag,
+    onRootDragEnd: handleRootDragEnd,
   });
 
   const handleLayoutUpdate = useCallback(
