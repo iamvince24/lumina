@@ -15,6 +15,7 @@ import { useTabStore } from '@/stores/tabStore';
 import { useSidebarStore } from '@/stores/sidebarStore';
 import { useAppShortcuts } from '@/hooks/useAppShortcuts';
 import { cn } from '@/utils';
+import { init } from 'react-find/next';
 
 export default function MainLayout({
   children,
@@ -26,6 +27,10 @@ export default function MainLayout({
   const addTab = useTabStore((state) => state.addTab);
   const tabs = useTabStore((state) => state.tabs);
   const { isCollapsed } = useSidebarStore();
+
+  useEffect(() => {
+    init({ protocol: 'cursor' });
+  }, []);
 
   // 統一管理應用層級快捷鍵
   useAppShortcuts();

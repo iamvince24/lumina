@@ -16,6 +16,18 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
   },
+
+  turbopack: {
+    rules: {
+      '*.tsx': {
+        loaders: ['react-find/webpack/webpack-react-source-loader'],
+      },
+
+      '*.jsx': {
+        loaders: ['react-find/webpack/webpack-react-source-loader'],
+      },
+    },
+  },
 };
 
 export default nextConfig;

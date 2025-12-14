@@ -66,6 +66,7 @@
     "postgres": "^3.4.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-find": "^2.0.6",
     "react-hotkeys-hook": "^4.6.1",
     "react-joyride": "^2.9.3",
     "react-konva": "^19.2.0",
