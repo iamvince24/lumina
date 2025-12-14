@@ -6,19 +6,19 @@
 'use client';
 
 import { useEffect } from 'react';
-import { MindMapEditor } from '@/components/MindMapEditor';
+import { NewMindMapEditor } from '@/components/NewMindMapEditor';
 import { RecentTopicsSidebar } from '@/components/TopicSystem/RecentTopicsSidebar';
 import { DecoratorDots } from '@/components/DecoratorDots';
 import { useMindMapByDate } from '@/hooks/useMindmap';
 import { useTabStore } from '@/stores/tabStore';
-import { useMindMapStore } from '@/stores/mindmapStore';
+import { useNewMindMapStore } from '@/stores/newMindMapStore';
 
 export default function TodayPage() {
   // 取得今天的 MindMap
   const today = new Date();
   const { data: mindmap, isLoading, error } = useMindMapByDate(today);
   const { addTab } = useTabStore();
-  const { loadMindMap, reset } = useMindMapStore();
+  const { loadFromSerialized, reset } = useNewMindMapStore();
 
   // 在頁面載入時自動建立 Tab
   useEffect(() => {
@@ -33,12 +33,54 @@ export default function TodayPage() {
   // 當 mindmap 資料載入完成後，載入到 store
   useEffect(() => {
     if (mindmap) {
-      loadMindMap(mindmap.nodes, mindmap.edges);
+      // 將 API 格式的 nodes 轉換為新格式
+      const storedNodes = mindmap.nodes.map((node) => ({
+        id: node.id,
+        content: node.data.label || '',
+        position: node.position,
+        size: { width: 200, height: 40 },
+        parentId: (node as { parentNode?: string }).parentNode || null,
+        children: [] as string[],
+        isCollapsed: false,
+        style: {
+          backgroundColor: 'transparent',
+          textColor: '#333333',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          borderRadius: 8,
+          fontSize: 14,
+          fontWeight: 'normal' as const,
+          padding: 12,
+        },
+        tags: (
+          node.data as {
+            tags?: Array<{ id: string; name: string; color: string }>;
+          }
+        ).tags,
+        metadata: {
+          createdAt:
+            (node.data as { createdAt?: Date }).createdAt?.toISOString() ||
+            new Date().toISOString(),
+          updatedAt:
+            (node.data as { updatedAt?: Date }).updatedAt?.toISOString() ||
+            new Date().toISOString(),
+        },
+      }));
+
+      // 重建 children 關係
+      storedNodes.forEach((node) => {
+        const children = storedNodes
+          .filter((n) => n.parentId === node.id)
+          .map((n) => n.id);
+        node.children = children;
+      });
+
+      loadFromSerialized(storedNodes);
     } else if (!isLoading && !error) {
       // 如果沒有資料且不是載入中或錯誤狀態，則重置 store（顯示空白畫布）
       reset();
     }
-  }, [mindmap, isLoading, error, loadMindMap, reset]);
+  }, [mindmap, isLoading, error, loadFromSerialized, reset]);
 
   // 載入中狀態
   if (isLoading) {
@@ -93,7 +135,7 @@ export default function TodayPage() {
           {/* Placeholder for Editor Label if needed, or just keep it clean as per design */}
           {/* <span className="text-gray-400 font-medium">編輯器</span> */}
         </div>
-        <MindMapEditor mindmapId={mindmap?.id || 'today'} />
+        <NewMindMapEditor mindmapId={mindmap?.id || 'today'} />
       </div>
     </div>
   );

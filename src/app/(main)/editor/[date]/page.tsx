@@ -8,9 +8,10 @@
 import { useEffect } from 'react';
 import { notFound } from 'next/navigation';
 import { isValid, parseISO } from 'date-fns';
-import { MindMapEditor } from '@/components/MindMapEditor';
+import { NewMindMapEditor } from '@/components/NewMindMapEditor';
 import { useMockMindMapByDate } from '@/__mocks__/hooks';
 import { useTabStore } from '@/stores/tabStore';
+import { useNewMindMapStore } from '@/stores/newMindMapStore';
 
 interface EditorPageProps {
   params: {
@@ -29,6 +30,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   // 取得該日期的 MindMap
   const { data: mindmap, isLoading, error } = useMockMindMapByDate(parsedDate);
   const { addTab } = useTabStore();
+  const { loadFromSerialized, reset } = useNewMindMapStore();
 
   // 在頁面載入時自動建立 Tab
   useEffect(() => {
@@ -39,6 +41,57 @@ export default function EditorPage({ params }: EditorPageProps) {
       isPinned: false,
     });
   }, [addTab, params.date]);
+
+  // 當 mindmap 資料載入完成後，載入到 store
+  useEffect(() => {
+    if (mindmap) {
+      // 將 API 格式的 nodes 轉換為新格式
+      const storedNodes = mindmap.nodes.map((node) => ({
+        id: node.id,
+        content: node.data.label || '',
+        position: node.position,
+        size: { width: 200, height: 40 },
+        parentId: (node as { parentNode?: string }).parentNode || null,
+        children: [] as string[],
+        isCollapsed: false,
+        style: {
+          backgroundColor: 'transparent',
+          textColor: '#333333',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          borderRadius: 8,
+          fontSize: 14,
+          fontWeight: 'normal' as const,
+          padding: 12,
+        },
+        tags: (
+          node.data as {
+            tags?: Array<{ id: string; name: string; color: string }>;
+          }
+        ).tags,
+        metadata: {
+          createdAt:
+            (node.data as { createdAt?: Date }).createdAt?.toISOString() ||
+            new Date().toISOString(),
+          updatedAt:
+            (node.data as { updatedAt?: Date }).updatedAt?.toISOString() ||
+            new Date().toISOString(),
+        },
+      }));
+
+      // 重建 children 關係
+      storedNodes.forEach((node) => {
+        const children = storedNodes
+          .filter((n) => n.parentId === node.id)
+          .map((n) => n.id);
+        node.children = children;
+      });
+
+      loadFromSerialized(storedNodes);
+    } else if (!isLoading && !error) {
+      reset();
+    }
+  }, [mindmap, isLoading, error, loadFromSerialized, reset]);
 
   // 載入中狀態
   if (isLoading) {
@@ -67,5 +120,5 @@ export default function EditorPage({ params }: EditorPageProps) {
     );
   }
 
-  return <MindMapEditor mindmapId={mindmap.id} />;
+  return <NewMindMapEditor mindmapId={mindmap.id} />;
 }
