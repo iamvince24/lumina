@@ -359,6 +359,41 @@ export const useMindMapState = () => {
     []
   );
 
+  // Reorder node within its parent's children array (move up/down)
+  const reorderNodeInParent = useCallback(
+    (nodeId: string, direction: 'up' | 'down') => {
+      setState((prev) => {
+        const node = prev.nodes.get(nodeId);
+        if (!node || !node.parentId) return prev;
+
+        const parent = prev.nodes.get(node.parentId);
+        if (!parent) return prev;
+
+        const currentIndex = parent.children.indexOf(nodeId);
+        if (currentIndex === -1) return prev;
+
+        const newIndex =
+          direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+        // Check bounds
+        if (newIndex < 0 || newIndex >= parent.children.length) return prev;
+
+        // Swap positions
+        const newChildren = [...parent.children];
+        [newChildren[currentIndex], newChildren[newIndex]] = [
+          newChildren[newIndex],
+          newChildren[currentIndex],
+        ];
+
+        const newNodes = new Map(prev.nodes);
+        newNodes.set(node.parentId, { ...parent, children: newChildren });
+
+        return { ...prev, nodes: newNodes };
+      });
+    },
+    []
+  );
+
   return {
     state,
     createNode,
@@ -370,5 +405,6 @@ export const useMindMapState = () => {
     updateViewport,
     toggleNodeCollapse,
     moveNode,
+    reorderNodeInParent,
   };
 };

@@ -62,6 +62,10 @@ export const MindMapEditor: React.FC = () => {
   });
   // 追蹤需要進入編輯模式的節點 (Command + Enter)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  // 追蹤 Outline View 中需要 focus 的節點
+  const [outlineFocusNodeId, setOutlineFocusNodeId] = useState<string | null>(
+    null
+  );
   // 視圖模式：mindmap 或 outline
   const [viewMode, setViewMode] = useState<ViewMode>('mindmap');
 
@@ -76,6 +80,7 @@ export const MindMapEditor: React.FC = () => {
     updateViewport,
     toggleNodeCollapse,
     moveNode,
+    reorderNodeInParent,
   } = useMindMapState();
 
   // Track current drop target for rendering indicators
@@ -256,7 +261,13 @@ export const MindMapEditor: React.FC = () => {
     const newX = selectedNode.position.x;
     const newY = selectedNode.position.y + 80;
     // 傳入 selectedId 作為 afterNodeId，讓新節點插入在選中節點後面
-    createNode('', { x: newX, y: newY }, parentId, selectedId);
+    const newNodeId = createNode(
+      '',
+      { x: newX, y: newY },
+      parentId,
+      selectedId
+    );
+    return newNodeId;
   }, [state, createNode]);
 
   const handleDeleteSelected = useCallback(() => {
@@ -266,6 +277,93 @@ export const MindMapEditor: React.FC = () => {
       }
     });
   }, [state.selectedNodeIds, state.rootNodeId, deleteNode]);
+
+  // Outline View 專用：在指定節點後新增同層兄弟節點
+  const handleOutlineAddSiblingNode = useCallback(
+    (nodeId: string): string | null => {
+      const node = state.nodes.get(nodeId);
+      if (!node) return null;
+
+      // 如果是 root node，新增子節點
+      if (nodeId === state.rootNodeId) {
+        const newX = node.position.x + 200;
+        const newY = node.position.y + node.children.length * 80;
+        const newNodeId = createNode('', { x: newX, y: newY }, nodeId);
+        setOutlineFocusNodeId(newNodeId);
+        return newNodeId;
+      }
+
+      // 非 root node：新增同層兄弟節點
+      const parentId = node.parentId;
+      if (!parentId) return null;
+
+      const newX = node.position.x;
+      const newY = node.position.y + 80;
+      const newNodeId = createNode('', { x: newX, y: newY }, parentId, nodeId);
+      setOutlineFocusNodeId(newNodeId);
+      return newNodeId;
+    },
+    [state.nodes, state.rootNodeId, createNode]
+  );
+
+  // Outline View 專用：縮排（成為上一個兄弟節點的子節點）
+  const handleIndentNode = useCallback(
+    (nodeId: string) => {
+      const node = state.nodes.get(nodeId);
+      if (!node || !node.parentId) return;
+
+      const parent = state.nodes.get(node.parentId);
+      if (!parent) return;
+
+      const currentIndex = parent.children.indexOf(nodeId);
+      if (currentIndex <= 0) return; // 沒有上一個兄弟節點
+
+      const previousSiblingId = parent.children[currentIndex - 1];
+      // 移動到上一個兄弟節點成為其子節點
+      moveNode(nodeId, previousSiblingId);
+      // 保持 focus
+      setOutlineFocusNodeId(nodeId);
+    },
+    [state.nodes, moveNode]
+  );
+
+  // Outline View 專用：退縮（提升到父節點層級）
+  const handleOutdentNode = useCallback(
+    (nodeId: string) => {
+      const node = state.nodes.get(nodeId);
+      if (!node || !node.parentId) return;
+
+      const parent = state.nodes.get(node.parentId);
+      if (!parent || !parent.parentId) return; // 父節點是 root，無法再提升
+
+      const grandparentId = parent.parentId;
+      const grandparent = state.nodes.get(grandparentId);
+      if (!grandparent) return;
+
+      // 計算插入位置：在父節點之後
+      const parentIndex = grandparent.children.indexOf(parent.id);
+      moveNode(nodeId, grandparentId, parentIndex + 1);
+      // 保持 focus
+      setOutlineFocusNodeId(nodeId);
+    },
+    [state.nodes, moveNode]
+  );
+
+  // Outline View 專用：向上移動節點
+  const handleMoveNodeUp = useCallback(
+    (nodeId: string) => {
+      reorderNodeInParent(nodeId, 'up');
+    },
+    [reorderNodeInParent]
+  );
+
+  // Outline View 專用：向下移動節點
+  const handleMoveNodeDown = useCallback(
+    (nodeId: string) => {
+      reorderNodeInParent(nodeId, 'down');
+    },
+    [reorderNodeInParent]
+  );
 
   const findDirectionalNeighbor = useCallback(
     (direction: keyof typeof directionVectors) => {
@@ -462,6 +560,8 @@ export const MindMapEditor: React.FC = () => {
     onArrowDown: () => handleArrowNavigation('down'),
     onArrowLeft: () => handleArrowNavigation('left'),
     onArrowRight: () => handleArrowNavigation('right'),
+    onSwitchToMindmap: () => setViewMode('mindmap'),
+    onSwitchToOutline: () => setViewMode('outline'),
   });
 
   const handleCanvasClick = useCallback(() => {
@@ -586,15 +686,25 @@ export const MindMapEditor: React.FC = () => {
           rootNodeId={state.rootNodeId}
           onContentChange={(nodeId, content) => updateNode(nodeId, { content })}
           onToggleCollapse={toggleNodeCollapse}
+          onAddSiblingNode={handleOutlineAddSiblingNode}
+          onIndentNode={handleIndentNode}
+          onOutdentNode={handleOutdentNode}
+          onMoveNodeUp={handleMoveNodeUp}
+          onMoveNodeDown={handleMoveNodeDown}
+          onSelectNode={selectNode}
+          onDeleteNode={deleteNode}
+          focusNodeId={outlineFocusNodeId}
+          onClearFocusNode={() => setOutlineFocusNodeId(null)}
         />
       )}
 
       {/* 狀態列 */}
       <div className="h-8 bg-white border-t border-gray-200 px-4 flex items-center justify-between text-sm text-gray-600">
         <div>
-          節點數: {state.nodes.size} | 選中: {state.selectedNodeIds.length}
+          節點數: {state.nodes.size}
+          {/* | 選中: {state.selectedNodeIds.length} */}
         </div>
-        <div>縮放: {Math.round(state.viewport.zoom * 100)}%</div>
+        {/* <div>縮放: {Math.round(state.viewport.zoom * 100)}%</div> */}
       </div>
     </div>
   );

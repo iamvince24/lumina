@@ -16,6 +16,8 @@ interface KeyboardShortcuts {
   onArrowDown?: () => void;
   onArrowLeft?: () => void;
   onArrowRight?: () => void;
+  onSwitchToMindmap?: () => void;
+  onSwitchToOutline?: () => void;
 }
 
 export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
@@ -80,6 +82,18 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts) => {
       if (isModifier && key === '0') {
         event.preventDefault();
         shortcuts.onZoomReset?.();
+      }
+
+      // Ctrl/Cmd + 1: Switch to Mindmap View
+      if (isModifier && key === '1') {
+        event.preventDefault();
+        shortcuts.onSwitchToMindmap?.();
+      }
+
+      // Ctrl/Cmd + 2: Switch to Outline View
+      if (isModifier && key === '2') {
+        event.preventDefault();
+        shortcuts.onSwitchToOutline?.();
       }
 
       // Tab: Create New Node (only when not editing)

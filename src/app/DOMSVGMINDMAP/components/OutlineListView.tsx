@@ -8,6 +8,15 @@ interface OutlineListViewProps {
   rootNodeId: string | null;
   onContentChange: (nodeId: string, content: string) => void;
   onToggleCollapse: (nodeId: string) => void;
+  onAddSiblingNode: (nodeId: string) => string | null;
+  onIndentNode: (nodeId: string) => void;
+  onOutdentNode: (nodeId: string) => void;
+  onMoveNodeUp: (nodeId: string) => void;
+  onMoveNodeDown: (nodeId: string) => void;
+  onSelectNode: (nodeId: string) => void;
+  onDeleteNode: (nodeId: string) => void;
+  focusNodeId: string | null;
+  onClearFocusNode: () => void;
 }
 
 interface OutlineItemProps {
@@ -16,6 +25,16 @@ interface OutlineItemProps {
   depth: number;
   onContentChange: (nodeId: string, content: string) => void;
   onToggleCollapse: (nodeId: string) => void;
+  onAddSiblingNode: (nodeId: string) => string | null;
+  onIndentNode: (nodeId: string) => void;
+  onOutdentNode: (nodeId: string) => void;
+  onMoveNodeUp: (nodeId: string) => void;
+  onMoveNodeDown: (nodeId: string) => void;
+  onSelectNode: (nodeId: string) => void;
+  onDeleteNode: (nodeId: string) => void;
+  focusNodeId: string | null;
+  onClearFocusNode: () => void;
+  rootNodeId: string | null;
 }
 
 const OutlineItem: React.FC<OutlineItemProps> = ({
@@ -24,25 +43,66 @@ const OutlineItem: React.FC<OutlineItemProps> = ({
   depth,
   onContentChange,
   onToggleCollapse,
+  onAddSiblingNode,
+  onIndentNode,
+  onOutdentNode,
+  onMoveNodeUp,
+  onMoveNodeDown,
+  onSelectNode,
+  onDeleteNode,
+  focusNodeId,
+  onClearFocusNode,
+  rootNodeId,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(node.content);
+  // Only track editContent separately when editing; otherwise derive from node.content
+  const [localEditContent, setLocalEditContent] = useState(node.content);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Track previous focusNodeId to detect focus triggers
+  const prevFocusNodeIdRef = useRef(focusNodeId);
 
   const hasChildren = node.children.length > 0;
   const isCollapsed = node.isCollapsed;
 
+  // Derive editContent: use localEditContent when editing, otherwise use node.content
+  const editContent = isEditing ? localEditContent : node.content;
+
+  // Wrapper to update localEditContent
+  const setEditContent = useCallback((content: string) => {
+    setLocalEditContent(content);
+  }, []);
+
+  // Handle focus node trigger - use microtask to defer state updates
+  useEffect(() => {
+    if (focusNodeId === node.id && prevFocusNodeIdRef.current !== node.id) {
+      prevFocusNodeIdRef.current = focusNodeId;
+      // Defer state updates to avoid cascading renders
+      queueMicrotask(() => {
+        setLocalEditContent(node.content);
+        setIsEditing(true);
+        onClearFocusNode();
+      });
+    } else if (prevFocusNodeIdRef.current !== focusNodeId) {
+      prevFocusNodeIdRef.current = focusNodeId;
+    }
+  }, [focusNodeId, node.id, node.content, onClearFocusNode]);
+
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
-      inputRef.current.select();
+      // Place cursor at end of text
+      const len = inputRef.current.value.length;
+      inputRef.current.setSelectionRange(len, len);
     }
   }, [isEditing]);
 
-  const handleDoubleClick = useCallback(() => {
-    setEditContent(node.content);
+  // Click to focus and edit (like markdown editor)
+  const handleClick = useCallback(() => {
+    setLocalEditContent(node.content);
     setIsEditing(true);
-  }, [node.content]);
+    onSelectNode(node.id);
+  }, [node.content, node.id, onSelectNode]);
 
   const handleBlur = useCallback(() => {
     setIsEditing(false);
@@ -53,15 +113,90 @@ const OutlineItem: React.FC<OutlineItemProps> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Prevent default behaviors and handle custom shortcuts
+
+      // Cmd/Ctrl + Up: Move node up
+      if (e.key === 'ArrowUp' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onMoveNodeUp(node.id);
+        return;
+      }
+
+      // Cmd/Ctrl + Down: Move node down
+      if (e.key === 'ArrowDown' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onMoveNodeDown(node.id);
+        return;
+      }
+
+      // Enter: Save and add sibling node
       if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
         e.preventDefault();
-        handleBlur();
-      } else if (e.key === 'Escape') {
+        // Save current content first
+        if (editContent.trim() !== node.content) {
+          onContentChange(node.id, editContent.trim());
+        }
+        setIsEditing(false);
+        // Add sibling node
+        onAddSiblingNode(node.id);
+        return;
+      }
+
+      // Tab: Indent (become child of previous sibling)
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        // Save current content first
+        if (editContent.trim() !== node.content) {
+          onContentChange(node.id, editContent.trim());
+        }
+        onIndentNode(node.id);
+        return;
+      }
+
+      // Shift+Tab: Outdent (move to parent level)
+      if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault();
+        // Save current content first
+        if (editContent.trim() !== node.content) {
+          onContentChange(node.id, editContent.trim());
+        }
+        onOutdentNode(node.id);
+        return;
+      }
+
+      // Escape: Cancel editing
+      if (e.key === 'Escape') {
         setEditContent(node.content);
         setIsEditing(false);
+        return;
+      }
+
+      // Backspace on empty content: Delete node
+      if (
+        e.key === 'Backspace' &&
+        editContent === '' &&
+        node.id !== rootNodeId
+      ) {
+        e.preventDefault();
+        setIsEditing(false);
+        onDeleteNode(node.id);
+        return;
       }
     },
-    [handleBlur, node.content]
+    [
+      editContent,
+      node.content,
+      node.id,
+      rootNodeId,
+      onContentChange,
+      onAddSiblingNode,
+      onIndentNode,
+      onOutdentNode,
+      onMoveNodeUp,
+      onMoveNodeDown,
+      onDeleteNode,
+      setEditContent,
+    ]
   );
 
   const handleToggle = useCallback(
@@ -107,7 +242,7 @@ const OutlineItem: React.FC<OutlineItemProps> = ({
         {/* 項目符號 */}
         <span className="w-2 h-2 rounded-full bg-gray-300 mx-2 flex-shrink-0" />
 
-        {/* 內容 */}
+        {/* 內容 - 點擊即可編輯 */}
         {isEditing ? (
           <input
             ref={inputRef}
@@ -120,7 +255,7 @@ const OutlineItem: React.FC<OutlineItemProps> = ({
           />
         ) : (
           <span
-            onDoubleClick={handleDoubleClick}
+            onClick={handleClick}
             className="flex-1 px-2 py-0.5 text-gray-700 cursor-text rounded hover:bg-gray-100"
           >
             {node.content || (
@@ -147,6 +282,16 @@ const OutlineItem: React.FC<OutlineItemProps> = ({
               depth={1}
               onContentChange={onContentChange}
               onToggleCollapse={onToggleCollapse}
+              onAddSiblingNode={onAddSiblingNode}
+              onIndentNode={onIndentNode}
+              onOutdentNode={onOutdentNode}
+              onMoveNodeUp={onMoveNodeUp}
+              onMoveNodeDown={onMoveNodeDown}
+              onSelectNode={onSelectNode}
+              onDeleteNode={onDeleteNode}
+              focusNodeId={focusNodeId}
+              onClearFocusNode={onClearFocusNode}
+              rootNodeId={rootNodeId}
             />
           ))}
         </div>
@@ -160,6 +305,15 @@ export const OutlineListView: React.FC<OutlineListViewProps> = ({
   rootNodeId,
   onContentChange,
   onToggleCollapse,
+  onAddSiblingNode,
+  onIndentNode,
+  onOutdentNode,
+  onMoveNodeUp,
+  onMoveNodeDown,
+  onSelectNode,
+  onDeleteNode,
+  focusNodeId,
+  onClearFocusNode,
 }) => {
   const rootNode = rootNodeId ? nodes.get(rootNodeId) : null;
 
@@ -196,6 +350,16 @@ export const OutlineListView: React.FC<OutlineListViewProps> = ({
               depth={0}
               onContentChange={onContentChange}
               onToggleCollapse={onToggleCollapse}
+              onAddSiblingNode={onAddSiblingNode}
+              onIndentNode={onIndentNode}
+              onOutdentNode={onOutdentNode}
+              onMoveNodeUp={onMoveNodeUp}
+              onMoveNodeDown={onMoveNodeDown}
+              onSelectNode={onSelectNode}
+              onDeleteNode={onDeleteNode}
+              focusNodeId={focusNodeId}
+              onClearFocusNode={onClearFocusNode}
+              rootNodeId={rootNodeId}
             />
           ))}
         </div>
