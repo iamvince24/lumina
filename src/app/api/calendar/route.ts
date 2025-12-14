@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { MindMapService } from '../../../../lib/services/mindmap.service';
-import { withAuth } from '../../../../lib/api/middleware';
+import { MindMapService } from '@/lib/services/mindmap.service';
+import { withAuth } from '@/lib/api/middleware';
 
 const mindMapService = new MindMapService();
 

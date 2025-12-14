@@ -1,7 +1,7 @@
 // app/api/mindmaps/[date]/route.ts
 import { NextResponse } from 'next/server';
-import { MindMapService } from '../../../../../lib/services/mindmap.service';
-import { withAuth } from '../../../../../lib/api/middleware';
+import { MindMapService } from '@/lib/services/mindmap.service';
+import { withAuth } from '@/lib/api/middleware';
 import type { MindMap, Node, Edge } from '@/types/mindmap';
 
 // 初始化 Service
@@ -113,6 +113,12 @@ function transformDbToMindMap(dbData: DbMindMapData): MindMap {
 // 使用 withAuth 保護這個 API
 export const GET = withAuth(async (req, { params, user }) => {
   try {
+    if (!params?.date) {
+      return NextResponse.json(
+        { error: 'Date parameter is required' },
+        { status: 400 }
+      );
+    }
     const date = params.date;
 
     // 呼叫 Service Layer

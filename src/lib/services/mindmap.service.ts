@@ -1,7 +1,7 @@
 // lib/services/mindmap.service.ts
 import 'server-only'; // 確保只在 Server 端執行
-import { db } from '../db/client';
-import { mindMaps } from '../db/schema';
+import { db } from '@/lib/db/client';
+import { mindMaps } from '@/lib/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 export class MindMapService {
@@ -74,3 +74,5 @@ export class MindMapService {
     return results;
   }
 }
+
+export const mindmapService = new MindMapService();
